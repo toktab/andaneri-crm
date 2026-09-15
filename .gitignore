@@ -1,0 +1,19 @@
+# backend
+backend/target/
+backend/.env
+backend/data/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# local tooling and backup downloads
+backups/
+
+# editors / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

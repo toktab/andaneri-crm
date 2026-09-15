@@ -1,0 +1,66 @@
+# Production: MySQL + the CRM + Caddy (HTTPS). Only Caddy is reachable from outside.
+# Copy .env.production.example to .env next to this file, fill it in, then:
+#   docker compose up -d --build
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: andaneri
+      MYSQL_USER: andaneri
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://db:3306/andaneri?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+      DB_USERNAME: andaneri
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      TOKEN_HOURS: ${TOKEN_HOURS:-168}
+      ROOT_USERNAME: ${ROOT_USERNAME:?set ROOT_USERNAME in .env}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:?set ROOT_PASSWORD in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      LOG_FULL_FAILED_PASSWORDS: ${LOG_FULL_FAILED_PASSWORDS:-false}
+      ROOT_BYPASS_WHITELIST: ${ROOT_BYPASS_WHITELIST:-true}
+      CRM_ZONE: Asia/Tbilisi
+      TEST_ACCOUNT: "false"
+      DEMO_DATA: "false"
+      FORWARD_HEADERS: native
+    # No ports: only Caddy talks to it, so the IP it logs is always the visitor's, never spoofed.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

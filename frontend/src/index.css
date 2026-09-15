@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+
+/* dark: follows the class ThemeProvider puts on <html>, not the system setting directly (the user can override it). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Andaneri's colours come from the 2026 trends sheet: magenta, violet, lime green and raspberry.
+ * The magenta used for buttons is a shade darker than the print colour so white text on it stays
+ * readable in daylight on a phone.
+ */
+@theme {
+  --font-sans: 'Inter Variable', 'Noto Sans Georgian Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-brand-50: #fdf2f9;
+  --color-brand-100: #fbe4f3;
+  --color-brand-200: #f7c6e6;
+  --color-brand-300: #ef98cf;
+  --color-brand-400: #e160b3;
+  --color-brand-500: #cf2f97;
+  --color-brand-600: #b0127f;
+  --color-brand-700: #910f68;
+  --color-brand-800: #761254;
+  --color-brand-900: #621447;
+
+  --color-violet-brand: #c517ef;
+  --color-lime-brand: #a9d38f;
+  --color-raspberry: #e0186a;
+
+  --color-ink: #1c1523;
+  --color-muted: #6b6475;
+  --color-line: #ebe6ef;
+  --color-canvas: #f8f6fa;
+  /* Cards, dialogs, inputs: white in the light theme. Use bg-surface, never bg-white, for anything that should go dark. */
+  --color-surface: #ffffff;
+}
+
+/*
+ * The dark theme swaps variables rather than adding dark: classes to every screen. Light tints (50-300)
+ * and dark shades (700-950) of each palette trade places, so "bg-rose-50 text-rose-700" becomes a dark
+ * rose background with light rose text. 400-600 stay, so white text on bg-brand-600 or bg-emerald-600
+ * still reads. The stock palette values are Tailwind 4's own, mirrored.
+ */
+.dark {
+  color-scheme: dark;
+
+  --color-ink: #eee8f3;
+  --color-muted: #a89eb3;
+  --color-line: #342b3c;
+  --color-canvas: #110d15;
+  --color-surface: #1b1520;
+
+  --color-brand-50: #2a0f23;
+  --color-brand-100: #3b1333;
+  --color-brand-200: #561a4a;
+  --color-brand-300: #7a2266;
+  --color-brand-400: #c43b98;
+  --color-brand-500: #d24ea5;
+  --color-brand-700: #f28fcf;
+  --color-brand-800: #f6b6df;
+  --color-brand-900: #fbd8ee;
+
+  --color-slate-50: oklch(12.9% 0.042 264.695);
+  --color-slate-100: oklch(20.8% 0.042 265.755);
+  --color-slate-200: oklch(27.9% 0.041 260.031);
+  --color-slate-300: oklch(37.2% 0.044 257.287);
+  --color-slate-700: oklch(86.9% 0.022 252.894);
+  --color-slate-800: oklch(92.9% 0.013 255.508);
+  --color-slate-900: oklch(96.8% 0.007 247.896);
+  --color-slate-950: oklch(98.4% 0.003 247.858);
+  --color-stone-50: oklch(14.7% 0.004 49.25);
+  --color-stone-100: oklch(21.6% 0.006 56.043);
+  --color-stone-200: oklch(26.8% 0.007 34.298);
+  --color-stone-300: oklch(37.4% 0.01 67.558);
+  --color-stone-700: oklch(86.9% 0.005 56.366);
+  --color-stone-800: oklch(92.3% 0.003 48.717);
+  --color-stone-900: oklch(97% 0.001 106.424);
+  --color-stone-950: oklch(98.5% 0.001 106.423);
+  --color-red-50: oklch(25.8% 0.092 26.042);
+  --color-red-100: oklch(39.6% 0.141 25.723);
+  --color-red-200: oklch(44.4% 0.177 26.899);
+  --color-red-300: oklch(50.5% 0.213 27.518);
+  --color-red-700: oklch(80.8% 0.114 19.571);
+  --color-red-800: oklch(88.5% 0.062 18.334);
+  --color-red-900: oklch(93.6% 0.032 17.717);
+  --color-red-950: oklch(97.1% 0.013 17.38);
+  --color-rose-50: oklch(27.1% 0.105 12.094);
+  --color-rose-100: oklch(41% 0.159 10.272);
+  --color-rose-200: oklch(45.5% 0.188 13.697);
+  --color-rose-300: oklch(51.4% 0.222 16.935);
+  --color-rose-700: oklch(81% 0.117 11.638);
+  --color-rose-800: oklch(89.2% 0.058 10.001);
+  --color-rose-900: oklch(94.1% 0.03 12.58);
+  --color-rose-950: oklch(96.9% 0.015 12.422);
+  --color-orange-50: oklch(26.6% 0.079 36.259);
+  --color-orange-100: oklch(40.8% 0.123 38.172);
+  --color-orange-200: oklch(47% 0.157 37.304);
+  --color-orange-300: oklch(55.3% 0.195 38.402);
+  --color-orange-700: oklch(83.7% 0.128 66.29);
+  --color-orange-800: oklch(90.1% 0.076 70.697);
+  --color-orange-900: oklch(95.4% 0.038 75.164);
+  --color-orange-950: oklch(98% 0.016 73.684);
+  --color-amber-50: oklch(27.9% 0.077 45.635);
+  --color-amber-100: oklch(41.4% 0.112 45.904);
+  --color-amber-200: oklch(47.3% 0.137 46.201);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-amber-700: oklch(87.9% 0.169 91.605);
+  --color-amber-800: oklch(92.4% 0.12 95.746);
+  --color-amber-900: oklch(96.2% 0.059 95.617);
+  --color-amber-950: oklch(98.7% 0.022 95.277);
+  --color-green-50: oklch(26.6% 0.065 152.934);
+  --color-green-100: oklch(39.3% 0.095 152.535);
+  --color-green-200: oklch(44.8% 0.119 151.328);
+  --color-green-300: oklch(52.7% 0.154 150.069);
+  --color-green-700: oklch(87.1% 0.15 154.449);
+  --color-green-800: oklch(92.5% 0.084 155.995);
+  --color-green-900: oklch(96.2% 0.044 156.743);
+  --color-green-950: oklch(98.2% 0.018 155.826);
+  --color-emerald-50: oklch(26.2% 0.051 172.552);
+  --color-emerald-100: oklch(37.8% 0.077 168.94);
+  --color-emerald-200: oklch(43.2% 0.095 166.913);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-emerald-700: oklch(84.5% 0.143 164.978);
+  --color-emerald-800: oklch(90.5% 0.093 164.15);
+  --color-emerald-900: oklch(95% 0.052 163.051);
+  --color-emerald-950: oklch(97.9% 0.021 166.113);
+  --color-sky-50: oklch(29.3% 0.066 243.157);
+  --color-sky-100: oklch(39.1% 0.09 240.876);
+  --color-sky-200: oklch(44.3% 0.11 240.79);
+  --color-sky-300: oklch(50% 0.134 242.749);
+  --color-sky-700: oklch(82.8% 0.111 230.318);
+  --color-sky-800: oklch(90.1% 0.058 230.902);
+  --color-sky-900: oklch(95.1% 0.026 236.824);
+  --color-sky-950: oklch(97.7% 0.013 236.62);
+  --color-indigo-50: oklch(25.7% 0.09 281.288);
+  --color-indigo-100: oklch(35.9% 0.144 278.697);
+  --color-indigo-200: oklch(39.8% 0.195 277.366);
+  --color-indigo-300: oklch(45.7% 0.24 277.023);
+  --color-indigo-700: oklch(78.5% 0.115 274.713);
+  --color-indigo-800: oklch(87% 0.065 274.039);
+  --color-indigo-900: oklch(93% 0.034 272.788);
+  --color-indigo-950: oklch(96.2% 0.018 272.314);
+  --color-violet-50: oklch(28.3% 0.141 291.089);
+  --color-violet-100: oklch(38% 0.189 293.745);
+  --color-violet-200: oklch(43.2% 0.232 292.759);
+  --color-violet-300: oklch(49.1% 0.27 292.581);
+  --color-violet-700: oklch(81.1% 0.111 293.571);
+  --color-violet-800: oklch(89.4% 0.057 293.283);
+  --color-violet-900: oklch(94.3% 0.029 294.588);
+  --color-violet-950: oklch(96.9% 0.016 293.756);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Georgian script reads better with a touch more line height than Latin. */
+:lang(ka) body {
+  line-height: 1.55;
+}
+
+/*
+ * Shared building blocks. Declared with @utility rather than @layer components: in Tailwind 4 only
+ * utilities can be reused through @apply (btn-primary builds on btn), and a plain utility such as
+ * px-2 next to them still wins because single-property utilities are emitted later.
+ */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgba(28,21,35,0.04)];
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition
+    disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500;
+}
+
+/* Hover by brightness, not a darker brand shade: in the dark theme the 700 and 800 shades are the light ones. */
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white hover:brightness-110 active:brightness-95;
+}
+
+@utility btn-secondary {
+  @apply btn border border-line bg-surface text-ink hover:bg-brand-50;
+}
+
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-ink/5 hover:text-ink;
+}
+
+@utility btn-danger {
+  @apply btn bg-rose-600 text-white hover:brightness-110;
+}
+
+@utility input {
+  @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/70
+    focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:bg-canvas;
+}
+
+@utility label {
+  @apply mb-1 block text-xs font-medium text-muted;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition;
+}
+
+@utility chip-off {
+  @apply chip border-line bg-surface text-ink hover:border-brand-300;
+}
+
+@utility chip-on {
+  @apply chip border-brand-600 bg-brand-600 text-white;
+}
+
+/* Long lists and the spreadsheet: skip laying out what is off screen. */
+@utility scroll-area {
+  @apply overflow-auto overscroll-contain;
+  contain: strict;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.drawer-in {
+  animation: drawer-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-in {
+    animation: none;
+  }
+}
+
+/* Printing a report: no navigation, no buttons, just the numbers, always on white. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

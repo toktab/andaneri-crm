@@ -1,0 +1,19 @@
+# HTTPS certificates are fetched and renewed automatically for {$DOMAIN}.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Excel files of a few MB are normal; nothing legitimate is bigger than this.
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy app:8082
+}
