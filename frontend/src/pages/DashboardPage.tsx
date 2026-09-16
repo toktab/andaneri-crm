@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarPlus, ChevronRight, CircleCheck, Flame, Phone, Plus, ShoppingCart, Sparkles, TriangleAlert } from 'lucide-react'
+import { CalendarPlus, ChevronDown, ChevronRight, ChevronUp, CircleCheck, Flame, Phone, Plus, ShoppingCart, Sparkles, TriangleAlert } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
@@ -33,6 +33,8 @@ export function DashboardPage() {
   const [openTask, setOpenTask] = useState<TaskDto | null>(null)
   const [newTask, setNewTask] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  // The pipeline and the orders are worth a look, just not above the day's work on a phone.
+  const [showNumbers, setShowNumbers] = useState(false)
   const editable = canEdit()
 
   const hour = new Date().getHours()
@@ -160,7 +162,7 @@ export function DashboardPage() {
           </section>
         </div>
 
-        <div className="min-w-0 space-y-4 [&>section:nth-child(n+2)]:hidden md:[&>section:nth-child(n+2)]:block">
+        <div className={`min-w-0 space-y-4 ${showNumbers ? '' : '[&>section:nth-child(n+2)]:hidden'} md:[&>section:nth-child(n+2)]:block`}>
           <section className="card p-3">
             <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
               <Flame className="size-4 text-raspberry" /> {t('dashboard.alerts')}
@@ -204,6 +206,13 @@ export function DashboardPage() {
               </Link>
             ))}
           </section>
+
+          {phone && (
+            <button type="button" className="btn-secondary w-full md:hidden" onClick={() => setShowNumbers(!showNumbers)}>
+              {showNumbers ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              {showNumbers ? t('dashboard.hideNumbers') : t('dashboard.showNumbers')}
+            </button>
+          )}
         </div>
       </div>
 

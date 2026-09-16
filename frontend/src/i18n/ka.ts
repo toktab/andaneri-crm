@@ -149,7 +149,7 @@ export const ka = {
   },
   start: { note: 'სწრაფი ჩანაწერი', business: 'ახალი ბიზნესი', task: 'ახალი ამოცანა', call: 'ზარების რეჟიმი' },
   dashboard: {
-    nextUp: 'ახლა რიგზეა', moreWaiting: 'კიდევ {n}',
+    nextUp: 'ახლა რიგზეა', moreWaiting: 'კიდევ {n}', showNumbers: 'ფაიპლაინი და შეკვეთები', hideNumbers: 'დამალვა',
     morning: 'დილა მშვიდობისა, {name}', afternoon: 'გამარჯობა, {name}', evening: 'საღამო მშვიდობისა, {name}',
     overdue: 'ვადაგადაცილებული', today: 'დღის ამოცანები', upcoming: 'მოახლოებული ({n} დღე)', nothingToday: 'დღეს დაგეგმილი არაფერია',
     nothingOverdue: 'ვადაგადაცილებული არაფერია', pipeline: 'ფაიპლაინი', alerts: 'ყურადღება', noAlerts: 'ყველაფერი რიგზეა',
@@ -198,7 +198,7 @@ export const ka = {
     mergeProject: 'პროექტების გაერთიანება', mergeProjectHint: '"{name}"-ის ყველა ფურცელი გადავა არჩეულ პროექტში, "{name}" წაიშლება.',
     mergeSheet: 'ფურცლების გაერთიანება', mergeSheetHint: '"{name}"-ის ყველა ბიზნესი გადავა არჩეულ ფურცელში, "{name}" წაიშლება.',
     mergeTarget: 'სად', moveSheet: 'სხვა პროექტში გადატანა', noProject: 'პროექტის გარეშე', sheetsCount: '{n} ფურცელი',
-    listMode: 'სია', excelMode: 'Excel რეჟიმი', search: 'ძებნა ამ ფურცელში...', count: '{n} ბიზნესი',
+    listMode: 'სია', excelMode: 'Excel რეჟიმი', cardsMode: 'ყველა ველი', allFields: 'ყველა ველის შეცვლა', search: 'ძებნა ამ ფურცელში...', count: '{n} ბიზნესი',
     empty: 'აქ ბიზნესი ჯერ არ არის', addRow: 'ახალი ხაზი', newRowName: 'ახალი ბიზნესის დასახელება',
     moveTo: 'ფურცელში გადატანა', setStatus: 'სტატუსი', setPriority: 'პრიორიტეტი', assign: 'პასუხისმგებელი',
     removeFromSheet: 'ფურცლიდან ამოღება', clearSelection: 'მონიშნულის მოხსნა', bulkDone: 'შეიცვალა: {updated}, გამოტოვდა: {skipped}',

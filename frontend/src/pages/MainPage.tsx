@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { List, Plus, Search, Table2 } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useMode } from '../lib/mode'
+import { useIsPhone } from '../lib/mobile'
 import { useGrid, useRefreshWork, useWorkspace } from '../lib/queries'
 import type { BusinessDetail } from '../lib/types'
 import { useI18n } from '../i18n'
@@ -12,6 +13,7 @@ import { readScope, scopeParams, scopeSearch, WorkspaceTreeNav, type Scope } fro
 import { BusinessDrawer } from '../components/workspace/BusinessDrawer'
 import { NamesList } from '../components/workspace/NamesList'
 import { ExcelGrid } from '../components/workspace/ExcelGrid'
+import { CardEditor } from '../components/workspace/CardEditor'
 
 /**
  * The spreadsheet, rebuilt: projects and sheets on the left, the names of the chosen sheet on the right.
@@ -21,6 +23,7 @@ import { ExcelGrid } from '../components/workspace/ExcelGrid'
 export function MainPage() {
   const { t } = useI18n()
   const { canEdit } = useMode()
+  const phone = useIsPhone()
   const [search, setSearch] = useSearchParams()
   const scope = readScope(search)
   const mode = search.get('view') === 'excel' ? 'excel' : 'list'
@@ -93,7 +96,7 @@ export function MainPage() {
               <List className="size-4" /> {t('workspace.listMode')}
             </button>
             <button type="button" onClick={() => update({ view: 'excel' })} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium ${mode === 'excel' ? 'bg-brand-600 text-white' : 'text-muted hover:text-ink'}`}>
-              <Table2 className="size-4" /> {t('workspace.excelMode')}
+              <Table2 className="size-4" /> {phone ? t('workspace.cardsMode') : t('workspace.excelMode')}
             </button>
           </div>
           {canEdit() && (
@@ -105,6 +108,8 @@ export function MainPage() {
 
         {grid.error ? <ErrorBlock error={grid.error} onRetry={() => grid.refetch()} /> : mode === 'list' ? (
           <NamesList {...listProps} />
+        ) : phone ? (
+          <CardEditor {...listProps} />
         ) : (
           <ExcelGrid {...listProps} />
         )}

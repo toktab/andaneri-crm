@@ -148,7 +148,7 @@ export const en: Dict = {
   },
   start: { note: 'Quick note', business: 'New business', task: 'New task', call: 'Call mode' },
   dashboard: {
-    nextUp: 'Up next', moreWaiting: '{n} more',
+    nextUp: 'Up next', moreWaiting: '{n} more', showNumbers: 'Pipeline and orders', hideNumbers: 'Hide',
     morning: 'Good morning, {name}', afternoon: 'Hello, {name}', evening: 'Good evening, {name}',
     overdue: 'Overdue', today: "Today's tasks", upcoming: 'Coming up ({n} days)', nothingToday: 'Nothing planned today',
     nothingOverdue: 'Nothing overdue', pipeline: 'Pipeline', alerts: 'Needs attention', noAlerts: 'All good',
@@ -197,7 +197,7 @@ export const en: Dict = {
     mergeProject: 'Merge projects', mergeProjectHint: 'All sheets of "{name}" move into the chosen project, and "{name}" is removed.',
     mergeSheet: 'Merge sheets', mergeSheetHint: 'All businesses of "{name}" move into the chosen sheet, and "{name}" is removed.',
     mergeTarget: 'Into', moveSheet: 'Move to another project', noProject: 'No project', sheetsCount: '{n} sheets',
-    listMode: 'List', excelMode: 'Excel mode', search: 'Search this sheet...', count: '{n} businesses',
+    listMode: 'List', excelMode: 'Excel mode', cardsMode: 'All fields', allFields: 'Edit every field', search: 'Search this sheet...', count: '{n} businesses',
     empty: 'No businesses here yet', addRow: 'New row', newRowName: 'Name of the new business',
     moveTo: 'Move to sheet', setStatus: 'Status', setPriority: 'Priority', assign: 'Assign',
     removeFromSheet: 'Take out of sheet', clearSelection: 'Clear selection', bulkDone: 'Changed: {updated}, skipped: {skipped}',

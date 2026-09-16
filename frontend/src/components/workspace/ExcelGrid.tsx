@@ -14,7 +14,7 @@ import { EmptyState, Loading, Spinner, STATUS_STYLE } from '../ui'
 import { useToast } from '../Toast'
 import type { RowListProps } from './NamesList'
 
-interface Col {
+export interface Col {
   /** The PATCH key for editable columns ("phone", "sheetId", "custom.7"); any unique key otherwise. */
   key: string
   label: string
@@ -761,7 +761,7 @@ function normalize(col: Col, input: string): string | undefined {
   return value
 }
 
-function payload(col: Col, value: string): string | number | null {
+export function payload(col: Col, value: string): string | number | null {
   if (col.edit === 'number') return value === '' ? null : Number(value)
   if (col.edit === 'select') {
     if (value === '') return null
@@ -825,7 +825,7 @@ function saveWidths(widths: Record<string, number>) {
 }
 
 /** The columns, in the order of the old Sales Report Form, then everything else, then the team's extra fields. */
-function useColumns(): Col[] {
+export function useColumns(): Col[] {
   const { t, lang, name } = useI18n()
   const lookups = useLookups()
   return useMemo(() => {
