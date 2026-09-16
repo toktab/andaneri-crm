@@ -9,9 +9,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Something that should happen: a meeting on Thursday at 15:00, a call back, samples to send.
@@ -81,6 +85,14 @@ public class Task {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    /** Which flavors to take along (deliveries and tastings). */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "task_flavors", joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "flavor_id"))
+    private Set<Flavor> flavors = new LinkedHashSet<>();
+
+    /** Guessed from the old spreadsheet's "next step" column rather than planned by the team. */
+    private boolean imported;
+
     /** Minutes before {@link #dueAt} to remind the assignee. Null: their own default. 0: no reminder. */
     private Integer remindMinutes;
 
@@ -88,6 +100,9 @@ public class Task {
     private Instant remindedAt;
 
     public Long getId() { return id; }
+    public Set<Flavor> getFlavors() { return flavors; }
+    public boolean isImported() { return imported; }
+    public void setImported(boolean imported) { this.imported = imported; }
     public Integer getRemindMinutes() { return remindMinutes; }
     public void setRemindMinutes(Integer remindMinutes) { this.remindMinutes = remindMinutes; }
     public Instant getRemindedAt() { return remindedAt; }

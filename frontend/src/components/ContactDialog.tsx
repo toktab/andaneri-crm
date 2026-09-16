@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { ContactChannel, ContactDto } from '../lib/types'
 import { useRefreshWork } from '../lib/queries'
+import { formatPhone, isForeignPhone } from '../lib/format'
 import { useI18n } from '../i18n'
 import { Field, Modal, Spinner } from './ui'
 import { useToast } from './Toast'
@@ -16,9 +17,12 @@ export function ContactDialog({ open, onClose, businessId, contact }: {
   const refresh = useRefreshWork()
   const [form, setForm] = useState({ name: '', roleTitle: '', phone: '', email: '', preferredChannel: 'ANY' as ContactChannel, decisionMaker: false, notes: '' })
   const [saving, setSaving] = useState(false)
+  // A Georgian number is tidied into 5XX XX XX XX on its own; a foreign one is kept exactly as typed.
+  const [international, setInternational] = useState(false)
 
   useEffect(() => {
     if (open) {
+      setInternational(isForeignPhone(contact?.phone))
       setForm({
         name: contact?.name ?? '', roleTitle: contact?.roleTitle ?? '', phone: contact?.phone ?? '', email: contact?.email ?? '',
         preferredChannel: contact?.preferredChannel ?? 'ANY', decisionMaker: contact?.decisionMaker ?? false, notes: contact?.notes ?? '',
@@ -74,8 +78,20 @@ export function ContactDialog({ open, onClose, businessId, contact }: {
               {['მფლობელი', 'დირექტორი', 'მენეჯერი', 'ბარ მენეჯერი', 'ბარმენი', 'შეფი', 'Owner', 'Manager', 'Bar manager', 'Bartender'].map((r) => <option key={r} value={r} />)}
             </datalist>
           </Field>
-          <Field label={t('common.phone')}>
-            <input className="input" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Field label={t('common.phone')} hint={international ? t('business.phoneAnyFormat') : t('business.phoneFormat')}>
+            <input
+              className="input"
+              inputMode="tel"
+              placeholder={international ? '+49 151 23456789' : '555 12 34 56'}
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onBlur={() => { if (!international) setForm((f) => ({ ...f, phone: formatPhone(f.phone) })) }}
+            />
+            <label className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+              <input type="checkbox" className="size-3.5 accent-brand-600" checked={international}
+                onChange={(e) => setInternational(e.target.checked)} />
+              {t('business.internationalNumber')}
+            </label>
           </Field>
           <Field label={t('common.email')}>
             <input className="input" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />

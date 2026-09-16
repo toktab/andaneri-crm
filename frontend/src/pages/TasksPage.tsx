@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Eraser, Plus } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
@@ -62,7 +62,20 @@ export function TasksPage() {
     }
   }
 
+  // The spreadsheet's "next step" column became open tasks. They are guesses, and one press clears them.
+  const clearImported = async () => {
+    if (!window.confirm(t('tasks.clearImportedConfirm'))) return
+    try {
+      const { cancelled } = await api.post<{ cancelled: number }>('/tasks/imported/cancel', {})
+      toast.ok(t('tasks.clearedImported', { n: cancelled }))
+      refresh()
+    } catch (error) {
+      toast.error(error)
+    }
+  }
+
   const loading = tab === 'overdue' ? overdue.isLoading : tasks.isLoading
+  const hasImported = shown.some((task) => task.imported && task.status === 'OPEN')
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -75,6 +88,11 @@ export function TasksPage() {
               <option value="all">{t('common.team')}</option>
               {lookups.data?.users.filter((u) => u.active && u.id !== user?.id).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
             </select>
+            {editable && hasImported && (
+              <button type="button" className="btn-secondary" onClick={() => void clearImported()} title={t('tasks.importedHint')}>
+                <Eraser className="size-4" /> {t('tasks.clearImported')}
+              </button>
+            )}
             {editable && <button type="button" className="btn-primary" onClick={() => setOpen('new')}><Plus className="size-4" /> {t('tasks.newTask')}</button>}
           </>
         }

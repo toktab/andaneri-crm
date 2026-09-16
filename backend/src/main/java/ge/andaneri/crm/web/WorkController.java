@@ -32,6 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class WorkController {
 
+    public record CancelledTasks(int cancelled) {
+    }
+
     private final WorkService service;
     private final CurrentUser currentUser;
 
@@ -45,6 +48,29 @@ public class WorkController {
     @PostMapping("/businesses/{id}/activities")
     public ActivityDto logActivity(@PathVariable Long id, @Valid @RequestBody ActivityRequest request) {
         return service.logActivity(id, request, currentUser.require());
+    }
+
+    /** One entry, to open it for changing. */
+    @GetMapping("/businesses/{id}/activities/{activityId}")
+    public ActivityDto activity(@PathVariable Long id, @PathVariable Long activityId) {
+        return service.activity(id, activityId, currentUser.require());
+    }
+
+    @PutMapping("/businesses/{id}/activities/{activityId}")
+    public ActivityDto updateActivity(@PathVariable Long id, @PathVariable Long activityId, @Valid @RequestBody ActivityRequest request) {
+        return service.updateActivity(id, activityId, request, currentUser.require());
+    }
+
+    @DeleteMapping("/businesses/{id}/activities/{activityId}")
+    public ResponseEntity<Void> deleteActivity(@PathVariable Long id, @PathVariable Long activityId) {
+        service.deleteActivity(id, activityId, currentUser.require());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Clears the open tasks that came out of the spreadsheet's "next step" column. */
+    @PostMapping("/tasks/imported/cancel")
+    public CancelledTasks cancelImported() {
+        return new CancelledTasks(service.cancelImportedTasks(currentUser.require()));
     }
 
     @GetMapping("/businesses/{id}/timeline")

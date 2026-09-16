@@ -73,11 +73,13 @@ public class WorkService {
     private final ProductRepository products;
     private final InterestRepository interests;
     private final UserRepository users;
+    private final ge.andaneri.crm.domain.FlavorRepository flavors;
     private final AuditService audit;
 
     public WorkService(BusinessService businessService, ActivityRepository activities, TaskRepository tasks,
             CommentRepository comments, PurchaseRepository purchases, StatusChangeRepository statusChanges,
             ContactRepository contacts, ProductRepository products, InterestRepository interests, UserRepository users,
+            ge.andaneri.crm.domain.FlavorRepository flavors,
             AuditService audit) {
         this.businessService = businessService;
         this.activities = activities;
@@ -89,6 +91,7 @@ public class WorkService {
         this.products = products;
         this.interests = interests;
         this.users = users;
+        this.flavors = flavors;
         this.audit = audit;
     }
 
@@ -109,6 +112,7 @@ public class WorkService {
         activity.setUser(user);
         activity.setType(r.type());
         activity.setResult(r.result());
+        applyResults(activity, r);
         activity.setContact(contactOf(b, r.contactId()));
         activity.setOccurredAt(r.occurredAt() == null ? Instant.now() : r.occurredAt());
         activity.setNotes(Text.blankToNull(r.notes()));
@@ -151,6 +155,92 @@ public class WorkService {
         return ActivityDto.of(activity);
     }
 
+    /** Changing what was written down about a call or visit: what happened, when, with whom, what they said. */
+    @Transactional
+    public ActivityDto updateActivity(Long businessId, Long activityId, ActivityRequest r, User user) {
+        Business b = businessService.load(businessId);
+        CurrentUser.requireEdit(user, b);
+        Activity activity = ownActivity(businessId, activityId);
+        activity.setType(r.type());
+        activity.setResult(r.result());
+        applyResults(activity, r);
+        activity.setContact(contactOf(b, r.contactId()));
+        if (r.occurredAt() != null) {
+            activity.setOccurredAt(r.occurredAt());
+        }
+        activity.setNotes(Text.blankToNull(r.notes()));
+        // Written down later, so it is no longer only a guess from the spreadsheet.
+        activity.setImported(false);
+        businessService.applyStatus(b, r.newStatus(), user, null);
+        b.setUpdatedAt(Instant.now());
+        audit.record(businessId, "Activity", activityId, "UPDATED", r.type() + " " + r.result(), user);
+        return ActivityDto.of(activity);
+    }
+
+    /** Removes a call or visit written down by mistake. Any task completed by it keeps standing on its own. */
+    @Transactional
+    public void deleteActivity(Long businessId, Long activityId, User user) {
+        Business b = businessService.load(businessId);
+        CurrentUser.requireEdit(user, b);
+        Activity activity = ownActivity(businessId, activityId);
+        for (Task task : tasks.findForBusiness(businessId)) {
+            if (task.getActivity() != null && task.getActivity().getId().equals(activityId)) {
+                task.setActivity(null);
+            }
+        }
+        comments.findForActivity(activityId).forEach(comment -> comment.setActivity(null));
+        activities.delete(activity);
+        audit.record(businessId, "Activity", activityId, "DELETED", activity.getType() + " " + activity.getResult(), user);
+    }
+
+    /** One entry, so it can be opened again and corrected. */
+    @Transactional(readOnly = true)
+    public ActivityDto activity(Long businessId, Long activityId, User user) {
+        businessService.load(businessId);
+        return ActivityDto.of(ownActivity(businessId, activityId));
+    }
+
+    private Activity ownActivity(Long businessId, Long activityId) {
+        return activities.findById(activityId)
+                .filter(a -> a.getBusiness().getId().equals(businessId))
+                .orElseThrow(ApiException::notFound);
+    }
+
+    private static void applyResults(Activity activity, ActivityRequest r) {
+        activity.getResults().clear();
+        if (r.results() != null) {
+            r.results().stream().filter(extra -> extra != null && extra != r.result()).forEach(activity.getResults()::add);
+        }
+        activity.setResultNote(Text.blankToNull(r.resultNote()));
+    }
+
+    /**
+     * Cancels the open tasks that came out of the old spreadsheet's "next step" column. They are guesses,
+     * so one press clears them from the call list and the calendar; supervisors clear the whole team's.
+     */
+    @Transactional
+    public int cancelImportedTasks(User user) {
+        List<Task> guesses = tasks.findImportedWithStatus(TaskStatus.OPEN, user.isSupervisor() ? null : user.getId());
+        Instant now = Instant.now();
+        for (Task task : guesses) {
+            task.setStatus(TaskStatus.CANCELLED);
+            task.setCompletedAt(now);
+            task.setCompletedBy(user);
+        }
+        if (!guesses.isEmpty()) {
+            audit.record(null, "Task", null, "CANCELLED", "Excel: " + guesses.size(), user);
+        }
+        return guesses.size();
+    }
+
+    private void setFlavors(Task task, List<Long> flavorIds) {
+        task.getFlavors().clear();
+        if (flavorIds != null) {
+            flavorIds.stream().filter(java.util.Objects::nonNull).distinct()
+                    .forEach(id -> flavors.findById(id).ifPresent(task.getFlavors()::add));
+        }
+    }
+
     private void createNextTask(Business b, NextTask next, User user) {
         Task task = new Task();
         task.setBusiness(b);
@@ -160,6 +250,7 @@ public class WorkService {
         task.setEndAt(next.endAt());
         task.setAllDay(Boolean.TRUE.equals(next.allDay()));
         task.setTitle(Text.blankToNull(next.title()));
+        setFlavors(task, next.flavorIds());
         task.setLocation(Text.blankToNull(next.location()));
         task.setNotes(Text.blankToNull(next.notes()));
         task.setPriority(next.priority() == null ? Priority.NORMAL : next.priority());
@@ -217,7 +308,7 @@ public class WorkService {
     public TaskDto completeTask(Long id, ActivityRequest activity, User user) {
         Task task = editableTask(id, user);
         if (activity != null && task.getBusiness() != null) {
-            ActivityRequest linked = new ActivityRequest(activity.type(), activity.result(),
+            ActivityRequest linked = new ActivityRequest(activity.type(), activity.result(), activity.results(), activity.resultNote(),
                     activity.contactId() != null ? activity.contactId() : task.getContact() == null ? null : task.getContact().getId(),
                     activity.occurredAt(), activity.notes(), activity.newStatus(), activity.nextTask(), id,
                     activity.usages(), activity.interests(), activity.categoryAnswers());
@@ -288,6 +379,7 @@ public class WorkService {
         task.setLocation(Text.blankToNull(r.location()));
         task.setPriority(r.priority() == null ? Priority.NORMAL : r.priority());
         task.setNotes(Text.blankToNull(r.notes()));
+        setFlavors(task, r.flavorIds());
         User fallback = task.getAssignedTo() != null ? task.getAssignedTo() : user;
         task.setAssignedTo(assignee(r.assignedToId(), fallback, user));
     }
@@ -466,7 +558,8 @@ public class WorkService {
             List<CommentDto> nested = commentsByActivity.getOrDefault(a.getId(), List.of()).stream()
                     .sorted(Comparator.comparing(CommentDto::createdAt)).toList();
             items.add(new TimelineItem("ACTIVITY", a.getId(), a.getOccurredAt(), UserRef.of(a.getUser()), a.getType().name(),
-                    a.getResult().name(), null, a.getNotes(), null, null, null, ContactRef.of(a.getContact()), nested, a.isImported()));
+                    a.getResult().name(), ActivityDto.of(a).results().stream().map(Enum::name).toList(), a.getResultNote(),
+                    null, a.getNotes(), null, null, null, ContactRef.of(a.getContact()), nested, a.isImported()));
         }
         for (StatusChange s : statusChanges.findForBusiness(businessId)) {
             items.add(new TimelineItem(s.getFromStatus() == null ? "CREATED" : "STATUS", s.getId(), s.getChangedAt(),

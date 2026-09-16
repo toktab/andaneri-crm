@@ -3,13 +3,13 @@ import {
   addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns'
 import { enUS, ka as kaLocale } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eraser, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
 import { useLookups, useRefreshWork, useTasks } from '../lib/queries'
 import { api } from '../lib/api'
 import { fmtTime } from '../lib/format'
-import type { TaskDto } from '../lib/types'
+import type { TaskDto, TaskType } from '../lib/types'
 import { useI18n } from '../i18n'
 import { Choice, EmptyState, PageHeader } from '../components/ui'
 import { TaskRow, TYPE_TONE } from '../components/TaskRow'
@@ -44,6 +44,7 @@ export function CalendarPage() {
   }, [view, cursor])
 
   const tasks = useTasks({ from: range.from.toISOString(), to: startOfDay(range.to).toISOString(), userId, status: ['OPEN', 'DONE'] })
+  const hasImported = (tasks.data ?? []).some((task) => task.imported && task.status === 'OPEN')
   const onDay = (day: Date) => (tasks.data ?? []).filter((task) => isSameDay(new Date(task.dueAt), day))
 
   const step = (direction: 1 | -1) => {
@@ -61,6 +62,18 @@ export function CalendarPage() {
     const at = new Date(day)
     at.setHours(hour, 0, 0, 0)
     setCreating(at.toISOString())
+  }
+
+  /** The spreadsheet's "next step" column became open tasks; they are guesses, so one press clears them. */
+  const clearImported = async () => {
+    if (!window.confirm(t('tasks.clearImportedConfirm'))) return
+    try {
+      const { cancelled } = await api.post<{ cancelled: number }>('/tasks/imported/cancel', {})
+      toast.ok(t('tasks.clearedImported', { n: cancelled }))
+      refresh()
+    } catch (error) {
+      toast.error(error)
+    }
   }
 
   const complete = async (task: TaskDto) => {
@@ -100,6 +113,17 @@ export function CalendarPage() {
         </div>
       </div>
 
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {(['CALL', 'MEETING', 'VISIT', 'DELIVERY', 'FOLLOW_UP'] as TaskType[]).map((type) => (
+          <span key={type} className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${TYPE_TONE[type]}`}>{t(`taskType.${type}`)}</span>
+        ))}
+        {hasImported && editable && (
+          <button type="button" className="btn-ghost ml-auto text-xs" title={t('tasks.importedHint')} onClick={() => void clearImported()}>
+            <Eraser className="size-3.5" /> {t('tasks.clearImported')}
+          </button>
+        )}
+      </div>
+
       {view === 'month' && (
         <div className="card overflow-hidden">
           <div className="grid grid-cols-7 border-b border-line bg-canvas text-center text-xs font-medium text-muted">
@@ -123,8 +147,9 @@ export function CalendarPage() {
                   </div>
                   <div className="mt-1 space-y-0.5">
                     {items.slice(0, 3).map((task) => (
-                      <button key={task.id} type="button" onClick={() => setOpen(task)} className={`block w-full truncate rounded px-1 py-0.5 text-left text-[11px] ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''}`}>
-                        <span className="font-semibold">{task.allDay ? '' : fmtTime(task.dueAt)}</span> {task.businessName ?? task.title}
+                      <button key={task.id} type="button" onClick={() => setOpen(task)} title={`${t(`taskType.${task.type}`)}: ${task.businessName ?? task.title ?? ''}`}
+                        className={`block w-full truncate rounded px-1 py-0.5 text-left text-[11px] ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''} ${task.imported ? 'opacity-50 italic' : ''}`}>
+                        <span className="font-semibold">{task.allDay ? '' : fmtTime(task.dueAt)} {t(`taskType.${task.type}`)}</span> · {task.businessName ?? task.title}
                       </button>
                     ))}
                     {items.length > 3 && (
@@ -148,8 +173,9 @@ export function CalendarPage() {
               </div>
               <div className="space-y-1">
                 {onDay(day).map((task) => (
-                  <button key={task.id} type="button" onClick={() => setOpen(task)} className={`block w-full rounded-lg px-2 py-1 text-left text-xs ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''}`}>
-                    <span className="block font-semibold">{task.allDay ? '-' : fmtTime(task.dueAt)} · {t(`taskType.${task.type}`)}</span>
+                  <button key={task.id} type="button" onClick={() => setOpen(task)}
+                    className={`block w-full rounded-lg px-2 py-1 text-left text-xs ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''} ${task.imported ? 'opacity-50 italic' : ''}`}>
+                    <span className="block font-semibold">{task.allDay ? '-' : fmtTime(task.dueAt)} · {t(`taskType.${task.type}`)}{task.imported ? ` · ${t('tasks.imported')}` : ''}</span>
                     <span className="block truncate">{task.businessName ?? task.title}</span>
                   </button>
                 ))}

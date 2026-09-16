@@ -206,14 +206,14 @@ public class DemoDataSeeder implements ApplicationRunner {
     }
 
     private void activity(Business b, User user, ActivityType type, ActivityResult result, int daysAgo, String notes) {
-        workService.logActivity(b.getId(), new ActivityRequest(type, result, null,
+        workService.logActivity(b.getId(), new ActivityRequest(type, result, null, null, null,
                 Instant.now().minus(daysAgo, ChronoUnit.DAYS).minus(3, ChronoUnit.HOURS), notes, null, null, null, null, null, null), user);
     }
 
     private void task(Business b, User user, TaskType type, LocalDate day, int hour, String title, String location) {
         Instant due = day.atTime(hour, 0).atZone(properties.zoneId()).toInstant();
         Instant end = type == TaskType.MEETING ? due.plus(1, ChronoUnit.HOURS) : null;
-        workService.createTask(new TaskRequest(b.getId(), null, user.getId(), type, title, due, end, false, location, null, null, null), user);
+        workService.createTask(new TaskRequest(b.getId(), null, user.getId(), type, title, due, end, false, location, null, null, null, null), user);
     }
 
     private void purchase(Business b, User user, LocalDate date, String flavorA, int qtyA, String flavorB, int qtyB) {

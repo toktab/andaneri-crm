@@ -5,13 +5,15 @@ import { api } from '../lib/api'
 import { googleCalendarUrl, openInCalendar } from '../lib/calendar'
 import { minutesLabel } from './RemindersDialog'
 import { useAuth } from '../lib/auth'
-import type { Priority, TaskDto, TaskType } from '../lib/types'
+import type { FlavorDto, Priority, TaskDto, TaskType } from '../lib/types'
 import { TASK_TYPES } from '../lib/types'
-import { useLookups, useRefreshWork } from '../lib/queries'
+import { useLookups, useRefreshWork, keys } from '../lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
 import { atDaysFromNow, fromLocalInput, toLocalInput } from '../lib/format'
 import { useMode } from '../lib/mode'
 import { useI18n } from '../i18n'
 import { BusinessSelect, type BusinessPick } from './BusinessSelect'
+import { ChipPicker } from './ChipPicker'
 import { NEXT_PRESETS } from './LogActivityDialog'
 import { Choice, Field, Modal, Spinner } from './ui'
 import { useToast } from './Toast'
@@ -30,6 +32,7 @@ export function TaskDialog({ open, onClose, task, business, defaultDueAt, defaul
   const navigate = useNavigate()
   const refresh = useRefreshWork()
   const lookups = useLookups()
+  const queryClient = useQueryClient()
   const { user, isSupervisor } = useAuth()
   const { canEdit } = useMode()
   const editable = canEdit()
@@ -44,6 +47,8 @@ export function TaskDialog({ open, onClose, task, business, defaultDueAt, defaul
   const [priority, setPriority] = useState<Priority>('NORMAL')
   const [assignedToId, setAssignedToId] = useState<string>('')
   const [notes, setNotes] = useState('')
+  // What to take along when this is a delivery.
+  const [flavorIds, setFlavorIds] = useState<number[]>([])
   // '' = my default reminder time, '0' = none, otherwise minutes before.
   const [remind, setRemind] = useState('')
   const [saving, setSaving] = useState(false)
@@ -60,6 +65,7 @@ export function TaskDialog({ open, onClose, task, business, defaultDueAt, defaul
     setPriority(task?.priority ?? 'NORMAL')
     setAssignedToId(String(task?.assignedTo.id ?? user?.id ?? ''))
     setNotes(task?.notes ?? '')
+    setFlavorIds(task?.flavorIds ?? [])
     setRemind(task?.remindMinutes === null || task?.remindMinutes === undefined ? '' : String(task.remindMinutes))
   }, [open, task, business, defaultDueAt, defaultType, user])
 
@@ -89,6 +95,7 @@ export function TaskDialog({ open, onClose, task, business, defaultDueAt, defaul
     assignedToId: assignedToId ? Number(assignedToId) : null,
     notes,
     contactId: task?.contact?.id ?? null,
+    flavorIds,
     remindMinutes: remind === '' ? null : Number(remind),
   })
 
@@ -181,6 +188,22 @@ export function TaskDialog({ open, onClose, task, business, defaultDueAt, defaul
             {[0, 15, 30, 60, 120, 1440].map((m) => <option key={m} value={m}>{minutesLabel(m, t)}</option>)}
           </select>
         </Field>
+        {(type === 'DELIVERY' || type === 'SEND_SAMPLES') && (
+          <Field label={t('activity.deliverFlavors')} hint={t('activity.deliverFlavorsHint')}>
+            <ChipPicker
+              options={(lookups.data?.flavors ?? []).filter((f) => f.active).map((f) => ({ id: f.id, label: lang === 'ka' ? f.nameKa : f.nameEn || f.nameKa, hint: f.nameEn }))}
+              selected={flavorIds}
+              onChange={setFlavorIds}
+              onCreate={async (text) => {
+                const flavor = await api.post<FlavorDto>('/flavors', { nameKa: text, nameEn: '' })
+                queryClient.invalidateQueries({ queryKey: keys.lookups })
+                return { id: flavor.id, label: flavor.nameKa }
+              }}
+              placeholder={t('common.search')}
+              tone="green"
+            />
+          </Field>
+        )}
         <Field label={t('common.notes')}>
           <textarea rows={3} className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>

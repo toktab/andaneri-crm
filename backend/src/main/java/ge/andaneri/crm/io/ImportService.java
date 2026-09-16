@@ -446,6 +446,8 @@ public class ImportService {
                     task.setDueAt(due.atTime(10, 0).atZone(zone).toInstant());
                     task.setAssignedTo(b.getAssignedTo() != null ? b.getAssignedTo() : user);
                     task.setCreatedBy(user);
+                    // A guess read off the spreadsheet, not something anyone planned: greyed out, and clearable in one press.
+                    task.setImported(true);
                     tasks.save(task);
                     taskCount++;
                 } else {

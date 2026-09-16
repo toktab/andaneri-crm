@@ -11,7 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Something that happened: "14 Sep, called, no answer". Replaces the dated lines typed into the
@@ -48,6 +52,16 @@ public class Activity {
     @Column(nullable = false)
     private Instant occurredAt;
 
+    /** Everything else that happened, beside {@link #result}. */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "activity_results", joinColumns = @JoinColumn(name = "activity_id"))
+    @Column(name = "result", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Set<ActivityResult> results = new LinkedHashSet<>();
+
+    /** The result in the team's own words, when none of the buttons fits. */
+    private String resultNote;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -74,5 +88,8 @@ public class Activity {
     public void setNotes(String notes) { this.notes = notes; }
     public boolean isImported() { return imported; }
     public void setImported(boolean imported) { this.imported = imported; }
+    public Set<ActivityResult> getResults() { return results; }
+    public String getResultNote() { return resultNote; }
+    public void setResultNote(String resultNote) { this.resultNote = resultNote; }
     public Instant getCreatedAt() { return createdAt; }
 }

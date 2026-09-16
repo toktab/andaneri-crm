@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, ArrowRight, CalendarDays, Clock, ExternalLink, MapPin, MessageSquare, Phone, PhoneOff, ShoppingCart, Sparkles, Star, ThumbsDown, ThumbsUp,
+  ArrowLeft, ArrowRight, CalendarDays, Clock, Copy, Eraser, ExternalLink, MapPin, MessageSquare, Phone, PhoneOff, ShoppingCart, Sparkles, Star, ThumbsDown, ThumbsUp,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useMode } from '../lib/mode'
@@ -16,6 +16,7 @@ import { ContactDialog } from '../components/ContactDialog'
 import { BusinessEditDialog } from '../components/BusinessEditDialog'
 import { PurchaseDialog } from '../components/PurchaseDialog'
 import { TaskRow } from '../components/TaskRow'
+import { useCanCall } from '../components/Phones'
 import { useToast } from '../components/Toast'
 
 const QUICK_RESULTS: ActivityResult[] = ['TALKED', 'CALL_BACK', 'INTERESTED', 'MEETING_SET', 'SAMPLES_REQUESTED', 'NOT_INTERESTED']
@@ -29,6 +30,8 @@ const PRODUCT_QUESTIONS: MissingCode[] = ['USES_SYRUP', 'SYRUP_BRAND', 'SYRUP_FL
  */
 export function CallModePage() {
   const { t } = useI18n()
+  const toast = useToast()
+  const refresh = useRefreshWork()
   const navigate = useNavigate()
   const params = useParams()
   const [search] = useSearchParams()
@@ -48,6 +51,18 @@ export function CallModePage() {
     return list
   }, [dashboard.data])
 
+  /** The spreadsheet's "next step" column became open calls; they are guesses, so one press clears them. */
+  const clearImported = async () => {
+    if (!window.confirm(t('tasks.clearImportedConfirm'))) return
+    try {
+      const { cancelled } = await api.post<{ cancelled: number }>('/tasks/imported/cancel', {})
+      toast.ok(t('tasks.clearedImported', { n: cancelled }))
+      refresh()
+    } catch (error) {
+      toast.error(error)
+    }
+  }
+
   const go = (task: TaskDto | undefined) => {
     if (task?.businessId) navigate(`/calls/${task.businessId}?task=${task.id}`)
     else navigate('/calls')
@@ -62,13 +77,20 @@ export function CallModePage() {
           <BusinessSelect value={null} onChange={(pick) => pick && navigate(`/calls/${pick.id}`)} />
         </div>
         <section className="card p-3">
-          <div className="mb-1 flex items-center justify-between px-2">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 px-2">
             <h2 className="text-sm font-semibold">{t('callMode.queue')} ({queue.length})</h2>
-            {queue.length > 0 && (
-              <button type="button" className="btn-primary" onClick={() => go(queue[0])}>
-                <Phone className="size-4" /> {t('common.next')}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {queue.some((task) => task.imported) && (
+                <button type="button" className="btn-ghost text-xs" title={t('tasks.importedHint')} onClick={() => void clearImported()}>
+                  <Eraser className="size-3.5" /> {t('tasks.clearImported')}
+                </button>
+              )}
+              {queue.length > 0 && (
+                <button type="button" className="btn-primary" onClick={() => go(queue[0])}>
+                  <Phone className="size-4" /> {t('common.next')}
+                </button>
+              )}
+            </div>
           </div>
           {dashboard.isLoading ? <Loading /> : queue.length === 0 ? <EmptyState icon={<Phone className="size-8" />} title={t('callMode.empty')} /> : (
             queue.map((task) => <TaskRow key={task.id} task={task} showDate onOpen={() => go(task)} editable={false} />)
@@ -105,6 +127,7 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
   const { canEdit } = useMode()
   const lookups = useLookups()
   const business = useBusiness(businessId)
+  const canCall = useCanCall()
   const [note, setNote] = useState('')
   const [logResult, setLogResult] = useState<ActivityResult | null>(null)
   const [logOpen, setLogOpen] = useState(false)
@@ -125,6 +148,15 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
   const maps = mapsHref(b)
   const syrup = lookups.data?.categories.find((c) => c.nameEn === 'Syrup')
   const categoryName = (id: number) => name(lookups.data?.categories.find((c) => c.id === id))
+
+  const copyNumber = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.ok(t('common.copied'))
+    } catch {
+      window.prompt(t('common.copyManually'), value)
+    }
+  }
 
   // "No answer" is the most common result by far: one tap saves it and plans the retry for tomorrow.
   const noAnswer = async () => {
@@ -207,18 +239,37 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
         {/* Big numbers */}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {phones.length === 0 && <div className="rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50 p-4 text-sm font-medium text-rose-700">{t('missing.PHONE')}</div>}
-          {phones.map((phone, i) => (
-            <a key={`${phone.href}-${i}`} href={phone.href} className="flex items-center gap-3 rounded-2xl bg-brand-600 p-3.5 text-white shadow-sm transition hover:brightness-110 active:scale-[0.99]">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface/20"><Phone className="size-5" /></span>
-              <span className="min-w-0">
-                <span className="block text-xl font-semibold tracking-wide tabular-nums">{phone.display}</span>
-                <span className="flex items-center gap-1 truncate text-xs opacity-85">
-                  {phone.decides && <Star className="size-3 fill-current" />}
-                  {phone.who}{phone.role ? ` · ${phone.role}` : ''}
+          {phones.map((phone, i) => {
+            const inside = (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xl font-semibold tracking-wide tabular-nums">{phone.display}</span>
+                  <span className="flex items-center gap-1 truncate text-xs opacity-85">
+                    {phone.decides && <Star className="size-3 fill-current" />}
+                    {phone.who}{phone.role ? ` · ${phone.role}` : ''}
+                  </span>
                 </span>
-              </span>
-            </a>
-          ))}
+                <button
+                  type="button"
+                  title={t('common.copy')}
+                  onClick={(e) => { e.preventDefault(); void copyNumber(phone.display) }}
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-surface/20 hover:bg-surface/30"
+                >
+                  <Copy className="size-4" />
+                </button>
+              </>
+            )
+            const className = 'flex items-center gap-3 rounded-2xl bg-brand-600 p-3.5 text-white shadow-sm transition hover:brightness-110 active:scale-[0.99]'
+            // Tapping a number only does something on a phone; on a laptop it is there to be read and copied.
+            return canCall ? (
+              <a key={`${phone.href}-${i}`} href={phone.href} className={className}>
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface/20"><Phone className="size-5" /></span>
+                {inside}
+              </a>
+            ) : (
+              <div key={`${phone.href}-${i}`} className={className}>{inside}</div>
+            )
+          })}
         </div>
       </div>
 

@@ -58,6 +58,26 @@ export function number(value: number | null | undefined): string {
  * Every phone number written in a field. Spreadsheet cells hold things like
  * "(596) 900 010,   (551) 91 51 81" or "593 19 05 52 (wrong)"; each number gets its own call button.
  */
+/**
+ * A Georgian number always reads 5XX XX XX XX (or 3XX XX XX XX for a landline), whatever way it was typed
+ * or pasted in; a foreign number is left exactly as it was written.
+ */
+export function isForeignPhone(raw: string | null | undefined): boolean {
+  const trimmed = (raw ?? '').trim()
+  return trimmed.startsWith('+') && !trimmed.replace(/\D/g, '').startsWith('995')
+}
+
+export function formatPhone(raw: string): string {
+  const trimmed = raw.trim()
+  const digits = trimmed.replace(/\D/g, '')
+  const local = digits.startsWith('995') && digits.length === 12 ? digits.slice(3) : digits
+  const foreign = isForeignPhone(trimmed)
+  if (!foreign && local.length === 9 && /^[53]/.test(local)) {
+    return `${local.slice(0, 3)} ${local.slice(3, 5)} ${local.slice(5, 7)} ${local.slice(7, 9)}`
+  }
+  return trimmed
+}
+
 export function splitPhones(text: string | null | undefined): { display: string; href: string }[] {
   if (!text) return []
   const found: { display: string; href: string }[] = []
@@ -66,7 +86,7 @@ export function splitPhones(text: string | null | undefined): { display: string;
     const digits = raw.replace(/\D/g, '')
     if (digits.length < 6) continue
     const href = `tel:${raw.trim().startsWith('+') ? '+' : ''}${digits}`
-    if (!found.some((f) => f.href === href)) found.push({ display: raw.trim(), href })
+    if (!found.some((f) => f.href === href)) found.push({ display: formatPhone(raw), href })
   }
   return found
 }

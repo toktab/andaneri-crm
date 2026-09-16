@@ -17,8 +17,10 @@ export type TastingFeedback = 'LIKED' | 'OK' | 'DISLIKED' | 'UNKNOWN'
 export type ActivityType = 'CALL' | 'VISIT' | 'MEETING' | 'SAMPLES' | 'MESSAGE' | 'OTHER'
 export type ActivityResult =
   | 'NO_ANSWER' | 'TALKED' | 'INTERESTED' | 'NOT_INTERESTED' | 'CALL_BACK' | 'MEETING_SET'
-  | 'SAMPLES_REQUESTED' | 'ORDERED' | 'WRONG_NUMBER' | 'OTHER'
-export type TaskType = 'CALL' | 'MEETING' | 'VISIT' | 'SEND_SAMPLES' | 'SEND_PRICE_LIST' | 'FOLLOW_UP' | 'CHECK_REORDER' | 'OTHER'
+  | 'SAMPLES_REQUESTED' | 'ORDERED' | 'WRONG_NUMBER'
+  | 'SPONTANEOUS_VISIT' | 'SAMPLES_LEFT' | 'SAMPLES_LEFT_MORE' | 'OTHER'
+export type TaskType =
+  | 'CALL' | 'MEETING' | 'VISIT' | 'DELIVERY' | 'SEND_SAMPLES' | 'SEND_PRICE_LIST' | 'FOLLOW_UP' | 'CHECK_REORDER' | 'OTHER'
 export type TaskStatus = 'OPEN' | 'DONE' | 'CANCELLED'
 export type ProductStatus = 'ACTIVE' | 'COMING_SOON' | 'INACTIVE'
 export type DrinkType =
@@ -33,7 +35,7 @@ export const DRINK_TYPES: DrinkType[] = [
   'COCKTAILS', 'MOCKTAILS', 'SPRITZES', 'LEMONADES', 'SMOOTHIES', 'MILKSHAKES', 'ICE_CREAM', 'ICED_TEA',
   'HOT_TEA', 'COFFEE', 'ENERGY_DRINKS', 'WINE', 'WATER_PLUS', 'DESSERTS',
 ]
-export const TASK_TYPES: TaskType[] = ['CALL', 'MEETING', 'VISIT', 'SEND_SAMPLES', 'SEND_PRICE_LIST', 'FOLLOW_UP', 'CHECK_REORDER', 'OTHER']
+export const TASK_TYPES: TaskType[] = ['CALL', 'MEETING', 'VISIT', 'DELIVERY', 'SEND_SAMPLES', 'SEND_PRICE_LIST', 'FOLLOW_UP', 'CHECK_REORDER', 'OTHER']
 export const ACTIVITY_TYPES: ActivityType[] = ['CALL', 'VISIT', 'MEETING', 'SAMPLES', 'MESSAGE', 'OTHER']
 
 export interface UserDto {
@@ -151,6 +153,10 @@ export interface TaskDto {
   type: TaskType; title: string | null; dueAt: string; endAt: string | null; allDay: boolean; location: string | null
   priority: Priority; status: TaskStatus; notes: string | null; completedAt: string | null; completedBy: UserRef | null
   activityId: number | null
+  /** What to take along on a delivery. */
+  flavorIds: number[]
+  /** Guessed from the old spreadsheet, not written down by anyone. */
+  imported: boolean
   /** Null: the assignee's default reminder. 0: no reminder. Otherwise minutes before. */
   remindMinutes: number | null
 }
@@ -163,6 +169,8 @@ export interface HistoryItem {
 export interface HistoryPage { items: HistoryItem[]; page: number; hasMore: boolean; userId: number; userName: string }
 export interface ActivityDto {
   id: number; businessId: number; businessName: string; type: ActivityType; result: ActivityResult
+  /** Everything that happened at once; the first one is {@code result}. */
+  results: ActivityResult[]; resultNote: string | null
   occurredAt: string; notes: string | null; user: UserRef; contact: ContactRef | null; imported: boolean
 }
 export type MissingCode =
@@ -194,6 +202,7 @@ export interface PurchaseDto {
 export type TimelineKind = 'ACTIVITY' | 'COMMENT' | 'STATUS' | 'PURCHASE' | 'TASK_DONE' | 'TASK_CANCELLED' | 'CREATED'
 export interface TimelineItem {
   kind: TimelineKind; refId: number; at: string; user: UserRef | null; type: string | null; result: string | null
+  results: string[]; resultNote: string | null
   title: string | null; notes: string | null; fromStatus: BusinessStatus | null; toStatus: BusinessStatus | null
   amount: number | null; contact: ContactRef | null; comments: CommentDto[]; imported: boolean
 }

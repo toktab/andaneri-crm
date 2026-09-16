@@ -6,6 +6,7 @@ import ge.andaneri.crm.domain.ActivityType;
 import ge.andaneri.crm.domain.BusinessStatus;
 import ge.andaneri.crm.domain.Comment;
 import ge.andaneri.crm.domain.Contact;
+import ge.andaneri.crm.domain.Flavor;
 import ge.andaneri.crm.domain.Priority;
 import ge.andaneri.crm.domain.Purchase;
 import ge.andaneri.crm.domain.PurchaseItem;
@@ -44,7 +45,11 @@ public final class WorkDtos {
     public record TaskDto(Long id, Long businessId, String businessName, String businessPhone, String businessAddress,
             String businessMapsUrl, ContactRef contact, UserRef assignedTo, TaskType type, String title, Instant dueAt,
             Instant endAt, boolean allDay, String location, Priority priority, TaskStatus status, String notes,
-            Instant completedAt, UserRef completedBy, Long activityId, Integer remindMinutes) {
+            Instant completedAt, UserRef completedBy, Long activityId, Integer remindMinutes,
+            /** Flavors to take along, for a delivery or a tasting. */
+            List<Long> flavorIds,
+            /** Guessed from the old spreadsheet rather than planned. */
+            boolean imported) {
         public static TaskDto of(Task t) {
             var b = t.getBusiness();
             return new TaskDto(t.getId(), b == null ? null : b.getId(), b == null ? null : b.getName(),
@@ -52,7 +57,7 @@ public final class WorkDtos {
                     ContactRef.of(t.getContact()), UserRef.of(t.getAssignedTo()), t.getType(), t.getTitle(), t.getDueAt(),
                     t.getEndAt(), t.isAllDay(), t.getLocation(), t.getPriority(), t.getStatus(), t.getNotes(),
                     t.getCompletedAt(), UserRef.of(t.getCompletedBy()), t.getActivity() == null ? null : t.getActivity().getId(),
-                    t.getRemindMinutes());
+                    t.getRemindMinutes(), t.getFlavors().stream().map(Flavor::getId).toList(), t.isImported());
         }
     }
 
@@ -68,6 +73,7 @@ public final class WorkDtos {
             @Size(max = 200) String location,
             Priority priority,
             String notes,
+            List<Long> flavorIds,
             /** Null: the assignee's default. 0: no reminder. Otherwise minutes before, up to a week. */
             @jakarta.validation.constraints.Min(0) @jakarta.validation.constraints.Max(10080) Integer remindMinutes) {
     }
@@ -84,7 +90,10 @@ public final class WorkDtos {
      */
     public record ActivityRequest(
             @NotNull ActivityType type,
+            /** The main result; {@code results} may add others ("left samples" and "wants other flavors"). */
             @NotNull ActivityResult result,
+            List<ActivityResult> results,
+            @Size(max = 200) String resultNote,
             Long contactId,
             Instant occurredAt,
             String notes,
@@ -107,13 +116,21 @@ public final class WorkDtos {
             String notes,
             Long assignedToId,
             Long contactId,
-            Priority priority) {
+            Priority priority,
+            /** Flavors to take along, for a delivery or a tasting. */
+            List<Long> flavorIds) {
     }
 
+    /** {@code results}: everything that happened, the main one first. */
     public record ActivityDto(Long id, Long businessId, String businessName, ActivityType type, ActivityResult result,
+            List<ActivityResult> results, String resultNote,
             Instant occurredAt, String notes, UserRef user, ContactRef contact, boolean imported) {
         public static ActivityDto of(Activity a) {
+            List<ActivityResult> all = new java.util.ArrayList<>();
+            all.add(a.getResult());
+            a.getResults().forEach(extra -> { if (!all.contains(extra)) all.add(extra); });
             return new ActivityDto(a.getId(), a.getBusiness().getId(), a.getBusiness().getName(), a.getType(), a.getResult(),
+                    all, a.getResultNote(),
                     a.getOccurredAt(), a.getNotes(), UserRef.of(a.getUser()), ContactRef.of(a.getContact()), a.isImported());
         }
     }
@@ -169,13 +186,15 @@ public final class WorkDtos {
      * TASK_CANCELLED or CREATED; the fields that do not apply to a kind are null.
      */
     public record TimelineItem(String kind, Long refId, Instant at, UserRef user, String type, String result,
+            List<String> results, String resultNote,
             String title, String notes, BusinessStatus fromStatus, BusinessStatus toStatus, BigDecimal amount,
             ContactRef contact, List<CommentDto> comments, boolean imported) {
 
         public TimelineItem(String kind, Long refId, Instant at, UserRef user, String type, String result,
                 String title, String notes, BusinessStatus fromStatus, BusinessStatus toStatus, BigDecimal amount,
                 ContactRef contact, List<CommentDto> comments) {
-            this(kind, refId, at, user, type, result, title, notes, fromStatus, toStatus, amount, contact, comments, false);
+            this(kind, refId, at, user, type, result, List.of(), null, title, notes, fromStatus, toStatus, amount,
+                    contact, comments, false);
         }
     }
 }

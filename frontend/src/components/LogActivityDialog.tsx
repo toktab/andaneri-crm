@@ -16,9 +16,9 @@ import { useToast } from './Toast'
 
 const RESULTS: Record<ActivityType, ActivityResult[]> = {
   CALL: ['NO_ANSWER', 'TALKED', 'INTERESTED', 'CALL_BACK', 'MEETING_SET', 'SAMPLES_REQUESTED', 'ORDERED', 'NOT_INTERESTED', 'WRONG_NUMBER'],
-  VISIT: ['TALKED', 'INTERESTED', 'SAMPLES_REQUESTED', 'MEETING_SET', 'ORDERED', 'CALL_BACK', 'NOT_INTERESTED', 'OTHER'],
-  MEETING: ['TALKED', 'INTERESTED', 'SAMPLES_REQUESTED', 'ORDERED', 'CALL_BACK', 'NOT_INTERESTED', 'OTHER'],
-  SAMPLES: ['OTHER', 'INTERESTED', 'ORDERED', 'NOT_INTERESTED'],
+  VISIT: ['SPONTANEOUS_VISIT', 'TALKED', 'INTERESTED', 'SAMPLES_LEFT', 'SAMPLES_LEFT_MORE', 'SAMPLES_REQUESTED', 'MEETING_SET', 'ORDERED', 'CALL_BACK', 'NOT_INTERESTED', 'OTHER'],
+  MEETING: ['TALKED', 'INTERESTED', 'SAMPLES_LEFT', 'SAMPLES_LEFT_MORE', 'SAMPLES_REQUESTED', 'ORDERED', 'CALL_BACK', 'NOT_INTERESTED', 'OTHER'],
+  SAMPLES: ['SAMPLES_LEFT', 'SAMPLES_LEFT_MORE', 'OTHER', 'INTERESTED', 'ORDERED', 'NOT_INTERESTED'],
   MESSAGE: ['TALKED', 'INTERESTED', 'NO_ANSWER', 'CALL_BACK', 'NOT_INTERESTED', 'OTHER'],
   OTHER: ['OTHER', 'TALKED', 'INTERESTED', 'NOT_INTERESTED'],
 }
@@ -30,6 +30,9 @@ export const RESULT_TONE: Partial<Record<ActivityResult, string>> = {
   INTERESTED: 'border-emerald-600 bg-emerald-600 text-white',
   MEETING_SET: 'border-emerald-600 bg-emerald-600 text-white',
   SAMPLES_REQUESTED: 'border-emerald-600 bg-emerald-600 text-white',
+  SAMPLES_LEFT: 'border-emerald-600 bg-emerald-600 text-white',
+  SAMPLES_LEFT_MORE: 'border-emerald-600 bg-emerald-600 text-white',
+  SPONTANEOUS_VISIT: 'border-violet-600 bg-violet-600 text-white',
   ORDERED: 'border-emerald-700 bg-emerald-700 text-white',
 }
 
@@ -51,6 +54,8 @@ function suggestedStatus(current: BusinessStatus, result: ActivityResult | null)
     case 'MEETING_SET':
       return forward('MEETING')
     case 'SAMPLES_REQUESTED':
+    case 'SAMPLES_LEFT':
+    case 'SAMPLES_LEFT_MORE':
       return forward('TESTING')
     case 'NOT_INTERESTED':
       return current === 'NOT_INTERESTED' ? '' : 'NOT_INTERESTED'
@@ -68,7 +73,10 @@ function suggestedNext(result: ActivityResult | null, reorderDays: number): { ty
     case 'MEETING_SET':
       return { type: 'MEETING', dueAt: atDaysFromNow(1, 15), preset: '' }
     case 'SAMPLES_REQUESTED':
-      return { type: 'SEND_SAMPLES', dueAt: atDaysFromNow(1, 12), preset: 'tomorrow' }
+      return { type: 'DELIVERY', dueAt: atDaysFromNow(1, 12), preset: 'tomorrow' }
+    case 'SAMPLES_LEFT':
+    case 'SAMPLES_LEFT_MORE':
+      return { type: 'FOLLOW_UP', dueAt: atDaysFromNow(3, 12), preset: '' }
     case 'TALKED':
     case 'INTERESTED':
       return { type: 'FOLLOW_UP', dueAt: atDaysFromNow(2, 12), preset: 'in2days' }
@@ -80,6 +88,7 @@ function suggestedNext(result: ActivityResult | null, reorderDays: number): { ty
 }
 
 export const NEXT_PRESETS: { key: string; at: () => string }[] = [
+  { key: 'asap', at: () => inHours(0) },
   { key: 'in1h', at: () => inHours(1) },
   { key: 'in3h', at: () => inHours(3) },
   { key: 'tonight', at: () => atDaysFromNow(0, 19) },
@@ -94,13 +103,15 @@ export const NEXT_PRESETS: { key: string; at: () => string }[] = [
  * stage, what they use and want, and the next step, which lands on the calendar by itself.
  */
 export function LogActivityDialog({
-  open, onClose, business, initialType = 'CALL', initialResult = null, initialNotes = '', completeTask, onSaved,
+  open, onClose, business, initialType = 'CALL', initialResult = null, initialNotes = '', completeTask, activity, onSaved,
 }: {
   open: boolean
   onClose: () => void
   business: BusinessDetail
   initialType?: ActivityType
   initialResult?: ActivityResult | null
+  /** Set to change a call or visit already written down, instead of adding a new one. */
+  activity?: ActivityDto | null
   /** What was already typed, e.g. in call mode's quick note. */
   initialNotes?: string
   completeTask?: TaskDto | null
@@ -113,7 +124,10 @@ export function LogActivityDialog({
   const lookups = useLookups()
 
   const [type, setType] = useState<ActivityType>(initialType)
-  const [result, setResult] = useState<ActivityResult | null>(initialResult)
+  // One visit can be several things at once: we dropped in, left samples, and they asked about other flavors.
+  const [results, setResults] = useState<ActivityResult[]>(initialResult ? [initialResult] : [])
+  const [resultNote, setResultNote] = useState('')
+  const result = results[0] ?? null
   const [contactId, setContactId] = useState<string>('')
   const [when, setWhen] = useState(toLocalInput(new Date()))
   const [notes, setNotes] = useState('')
@@ -131,6 +145,7 @@ export function LogActivityDialog({
   const [nextAt, setNextAt] = useState(atDaysFromNow(1, 12))
   const [preset, setPreset] = useState('tomorrow')
   const [nextTitle, setNextTitle] = useState('')
+  const [nextFlavors, setNextFlavors] = useState<number[]>([])
   const [saving, setSaving] = useState(false)
 
   const reorderDays = lookups.data?.settings.reorder_days ?? 21
@@ -138,11 +153,14 @@ export function LogActivityDialog({
 
   useEffect(() => {
     if (!open) return
-    setType(completeTask ? taskToActivity(completeTask.type) : initialType)
-    setResult(initialResult)
-    setContactId(completeTask?.contact ? String(completeTask.contact.id) : business.contacts.find((c) => c.decisionMaker) ? String(business.contacts.find((c) => c.decisionMaker)!.id) : '')
-    setWhen(toLocalInput(new Date()))
-    setNotes(initialNotes)
+    setType(activity ? activity.type : completeTask ? taskToActivity(completeTask.type) : initialType)
+    setResults(activity ? activity.results : initialResult ? [initialResult] : [])
+    setResultNote(activity?.resultNote ?? '')
+    setContactId(activity?.contact ? String(activity.contact.id)
+      : completeTask?.contact ? String(completeTask.contact.id)
+        : business.contacts.find((c) => c.decisionMaker) ? String(business.contacts.find((c) => c.decisionMaker)!.id) : '')
+    setWhen(toLocalInput(activity ? activity.occurredAt : new Date()))
+    setNotes(activity?.notes ?? initialNotes)
     setStatus('')
     setStatusTouched(false)
     setLearnOpen(initialType === 'VISIT' || initialType === 'MEETING')
@@ -154,11 +172,13 @@ export function LogActivityDialog({
     setNextOn(false)
     setNextTouched(false)
     setNextTitle('')
+    setNextFlavors([])
     // Reset only when the dialog opens, not when the business refreshes underneath it.
   }, [open])
 
   // Choosing a result suggests the next stage and the next step; anything touched by hand stays.
   useEffect(() => {
+    if (activity) return
     if (!statusTouched) setStatus(suggestedStatus(business.status, result))
     if (!nextTouched) {
       const next = suggestedNext(result, reorderDays)
@@ -169,12 +189,12 @@ export function LogActivityDialog({
         setPreset(next.preset)
       }
     }
-  }, [result, business.status, statusTouched, nextTouched, reorderDays])
+  }, [result, business.status, statusTouched, nextTouched, reorderDays, activity])
 
   useEffect(() => {
-    if (!RESULTS[type].includes(result as ActivityResult)) setResult(type === 'SAMPLES' ? 'OTHER' : null)
+    setResults((chosen) => chosen.filter((r) => RESULTS[type].includes(r)))
     if (type === 'SAMPLES') setWantStatus('TESTING')
-  }, [type, result])
+  }, [type])
 
   const brandOptions = useMemo(
     () => (lookups.data?.brands ?? []).filter((b) => b.active && !b.own).map((b) => ({ id: b.id, label: b.name })),
@@ -206,9 +226,11 @@ export function LogActivityDialog({
           : [{ categoryId: syrupCategory.id, brandId: brandIds[0] ?? null, flavorIds }]
         : null
       const dueAt = nextAt
-      const activity = await api.post<ActivityDto>(`/businesses/${business.id}/activities`, {
+      const body = {
         type,
         result,
+        results,
+        resultNote: resultNote || null,
         contactId: contactId ? Number(contactId) : null,
         occurredAt: fromLocalInput(when),
         notes,
@@ -223,12 +245,16 @@ export function LogActivityDialog({
               endAt: nextType === 'MEETING' ? new Date(new Date(dueAt).getTime() + 3_600_000).toISOString() : null,
               title: nextTitle || null,
               contactId: contactId ? Number(contactId) : null,
+              flavorIds: nextFlavors,
             }
           : null,
-      })
+      }
+      const saved = activity
+        ? await api.put<ActivityDto>(`/businesses/${business.id}/activities/${activity.id}`, body)
+        : await api.post<ActivityDto>(`/businesses/${business.id}/activities`, body)
       toast.ok(t('activity.saved'))
       refresh(business.id)
-      onSaved?.(activity, result)
+      onSaved?.(saved, result)
       onClose()
     } catch (error) {
       toast.error(error)
@@ -242,7 +268,7 @@ export function LogActivityDialog({
       open={open}
       onClose={onClose}
       wide
-      title={t('activity.title', { name: business.name })}
+      title={activity ? t('activity.editTitle', { name: business.name }) : t('activity.title', { name: business.name })}
       footer={
         <>
           {completeTask && <span className="mr-auto text-xs text-emerald-700">{t('activity.completeTask')}</span>}
@@ -254,16 +280,27 @@ export function LogActivityDialog({
       }
     >
       <div className="space-y-4">
-        <Field label={t('activity.type')}>
+        <Field label={t('activity.type')} hint={t(`activityHint.${type}`)}>
           <Choice options={ACTIVITY_TYPES.map((value) => ({ value, label: t(`activityType.${value}`) }))} value={type} onChange={setType} />
         </Field>
 
-        <Field label={t('activity.result')}>
-          <Choice
-            options={RESULTS[type].map((value) => ({ value, label: t(`activityResult.${value}`), tone: RESULT_TONE[value] }))}
-            value={result}
-            onChange={setResult}
-          />
+        <Field label={t('activity.result')} hint={t('activity.resultHint')}>
+          <div className="flex flex-wrap gap-1.5">
+            {RESULTS[type].map((value) => {
+              const on = results.includes(value)
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${on ? RESULT_TONE[value] ?? 'border-brand-600 bg-brand-600 text-white' : 'border-line bg-surface text-ink hover:border-brand-300'}`}
+                  onClick={() => setResults((chosen) => (on ? chosen.filter((r) => r !== value) : [...chosen, value]))}
+                >
+                  {t(`activityResult.${value}`)}
+                </button>
+              )
+            })}
+          </div>
+          <input className="input mt-2" placeholder={t('activity.resultNotePlaceholder')} maxLength={200} value={resultNote} onChange={(e) => setResultNote(e.target.value)} />
         </Field>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -389,6 +426,11 @@ export function LogActivityDialog({
                   <input className="input" value={nextTitle} onChange={(e) => setNextTitle(e.target.value)} />
                 </Field>
               </div>
+              {(nextType === 'DELIVERY' || nextType === 'SEND_SAMPLES') && (
+                <Field label={t('activity.deliverFlavors')} hint={t('activity.deliverFlavorsHint')}>
+                  <ChipPicker options={flavorOptions} selected={nextFlavors} onChange={setNextFlavors} onCreate={createFlavor} placeholder={t('common.search')} tone="green" />
+                </Field>
+              )}
             </div>
           )}
         </div>

@@ -31,6 +31,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("select t from Task t join fetch t.assignedTo where t.status = :status and t.completedAt >= :from and t.completedAt < :to")
     List<Task> findCompletedInRange(TaskStatus status, Instant from, Instant to);
 
+    /** Tasks guessed from the old spreadsheet, so they can be cleared out of the call list in one go. */
+    @Query("select t from Task t join fetch t.assignedTo left join fetch t.business where t.imported = true"
+            + " and t.status = :status and (:userId is null or t.assignedTo.id = :userId)")
+    List<Task> findImportedWithStatus(TaskStatus status, Long userId);
+
     /** Open tasks around now whose reminder has not gone out yet; the scheduler decides which are due. */
     @Query("select t from Task t join fetch t.assignedTo left join fetch t.business left join fetch t.contact"
             + " where t.status = :status and t.remindedAt is null and t.dueAt >= :from and t.dueAt < :to")

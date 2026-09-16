@@ -10,7 +10,8 @@ import { useMode } from '../lib/mode'
 import { useBusiness, useLookups, usePurchases, useRefreshWork, useTimeline } from '../lib/queries'
 import { fmtDate, fmtDateTime, mapsHref, money, number, splitPhones } from '../lib/format'
 import type {
-  ActivityType, BusinessDetail, BusinessStatus, ContactDto, InterestDto, InterestStatus, MissingCode, TaskDto, TastingFeedback, TimelineItem,
+  ActivityDto, ActivityType, BusinessDetail, BusinessStatus, ContactDto, InterestDto, InterestStatus, MissingCode,
+  TaskDto, TastingFeedback, TimelineItem, UsageDto,
 } from '../lib/types'
 import { STATUSES } from '../lib/types'
 import { useI18n } from '../i18n'
@@ -21,6 +22,7 @@ import { PurchaseDialog } from '../components/PurchaseDialog'
 import { ContactDialog } from '../components/ContactDialog'
 import { BusinessEditDialog } from '../components/BusinessEditDialog'
 import { InterestDialog, UsageDialog } from '../components/ProductInfoDialogs'
+import { Phones } from '../components/Phones'
 import { NoteDialog } from '../components/NoteDialog'
 import { TaskRow } from '../components/TaskRow'
 import { useToast } from '../components/Toast'
@@ -54,6 +56,8 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
   const [contact, setContact] = useState<ContactDto | 'new' | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [usageOpen, setUsageOpen] = useState(false)
+  const [usage, setUsage] = useState<UsageDto | null>(null)
+  const [editing, setEditing] = useState<ActivityDto | null>(null)
   const [interestOpen, setInterestOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const editable = canEdit(b.canEdit)
@@ -181,6 +185,11 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
                       <b>{t(`activityType.${b.lastActivity.type}`)}</b>
                       <ResultBadge result={b.lastActivity.result} />
                       <span className="text-xs text-muted">{fmtDateTime(b.lastActivity.occurredAt, lang)} · {b.lastActivity.user.fullName}</span>
+                      {editable && (
+                        <button type="button" className="btn-ghost ml-auto p-1.5" title={t('activity.edit')} onClick={() => void openActivity(b.lastActivity!.id)}>
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                     {b.lastActivity.notes && <p className="mt-2 whitespace-pre-line text-sm">{b.lastActivity.notes}</p>}
                   </div>
@@ -211,7 +220,7 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
                 <ContactList b={b} onEdit={editable ? setContact : undefined} />
               </Card>
 
-              <Card title={t('business.suggestions')}>
+              <Card title={t('business.suggestions')} action={editable && <IconButton onClick={() => setInterestOpen(true)}><Plus className="size-4" /></IconButton>}>
                 {b.suggestions.length === 0 ? <p className="px-1 text-sm text-muted">{t('business.none')}</p> : (
                   <ul className="space-y-2 px-1">
                     {b.suggestions.map((s) => (
@@ -228,6 +237,18 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
                     ))}
                   </ul>
                 )}
+                {b.interests.length > 0 && (
+                  <div className="mt-2 border-t border-line px-1 pt-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">{t('business.offered')}</div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {b.interests.map((i) => (
+                        <span key={i.id} className="chip border-brand-200 bg-brand-50 text-brand-800">
+                          {i.flavor ? name(i.flavor) : i.product ? name(i.product) : '-'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Card>
 
               <Card title={t('business.purchases')}>
@@ -238,13 +259,13 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
         )}
 
         {tab === 'calls' && (
-          <ActivityList items={calls} loading={timeline.isLoading} empty={t('business.callsEmpty')} action={editable && (
+          <ActivityList items={calls} loading={timeline.isLoading} empty={t('business.callsEmpty')} businessId={b.id} onEdit={editable ? openActivity : undefined} action={editable && (
             <button type="button" className="btn-primary" onClick={() => setLog({ type: 'CALL', task: null })}><Phone className="size-4" /> {t('activityType.CALL')}</button>
           )} />
         )}
 
         {tab === 'visits' && (
-          <ActivityList items={visits} loading={timeline.isLoading} empty={t('business.visitsEmpty')} action={editable && (
+          <ActivityList items={visits} loading={timeline.isLoading} empty={t('business.visitsEmpty')} businessId={b.id} onEdit={editable ? openActivity : undefined} action={editable && (
             <div className="flex gap-2">
               <button type="button" className="btn-primary" onClick={() => setLog({ type: 'VISIT', task: null })}>{t('activityType.VISIT')}</button>
               <button type="button" className="btn-secondary" onClick={() => setLog({ type: 'MEETING', task: null })}>{t('activityType.MEETING')}</button>
@@ -253,14 +274,14 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
         )}
 
         {tab === 'answers' && (
-          <AnswersTab b={b} editable={editable} onAddUsage={() => setUsageOpen(true)} onAddInterest={() => setInterestOpen(true)} onEdit={() => setEditOpen(true)} />
+          <AnswersTab b={b} editable={editable} onAddUsage={() => setUsageOpen(true)} onEditUsage={setUsage} onAddInterest={() => setInterestOpen(true)} onEdit={() => setEditOpen(true)} />
         )}
 
         {tab === 'history' && (
           <div className="space-y-4">
             <CommentBox businessId={b.id} />
             {timeline.isLoading ? <Loading /> : (timeline.data ?? []).length === 0 ? <div className="card"><EmptyState title={t('business.noHistory')} /></div> : (
-              <div className="card p-4"><Timeline items={timeline.data ?? []} /></div>
+              <div className="card p-4"><Timeline items={timeline.data ?? []} businessId={b.id} onEdit={editable ? openActivity : undefined} /></div>
             )}
           </div>
         )}
@@ -274,15 +295,26 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
         <LogActivityDialog open onClose={() => setLog(null)} business={b} initialType={log.type} completeTask={log.task}
           onSaved={(_, result) => { if (result === 'ORDERED') setPurchaseOpen(true) }} />
       )}
+      {editing && <LogActivityDialog open onClose={() => setEditing(null)} business={b} activity={editing} />}
       <TaskDialog open={taskOpen !== null} onClose={() => setTaskOpen(null)} task={taskOpen === 'new' ? null : taskOpen} business={{ id: b.id, name: b.name }} />
       <PurchaseDialog open={purchaseOpen} onClose={() => setPurchaseOpen(false)} business={b} />
       <ContactDialog open={contact !== null} onClose={() => setContact(null)} businessId={b.id} contact={contact === 'new' ? null : contact} />
       <BusinessEditDialog open={editOpen} onClose={() => setEditOpen(false)} business={b} />
       <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} businessId={b.id} />
+      <UsageDialog open={usage !== null} onClose={() => setUsage(null)} businessId={b.id} usage={usage} />
       <InterestDialog open={interestOpen} onClose={() => setInterestOpen(false)} businessId={b.id} />
       <NoteDialog open={noteOpen} onClose={() => setNoteOpen(false)} business={{ id: b.id, name: b.name }} />
     </div>
   )
+
+  /** The timeline only carries a summary, so the entry itself is fetched before it is opened. */
+  async function openActivity(id: number) {
+    try {
+      setEditing(await api.get<ActivityDto>(`/businesses/${b.id}/activities/${id}`))
+    } catch (error) {
+      toast.error(error)
+    }
+  }
 
   function openFor(code: MissingCode) {
     if (code === 'PHONE' || code === 'CONTACT_PERSON' || code === 'DECISION_MAKER') setContact(code === 'DECISION_MAKER' && b.contacts[0] ? b.contacts[0] : 'new')
@@ -320,25 +352,26 @@ function ContactList({ b, onEdit }: { b: BusinessDetail; onEdit?: (contact: Cont
   const phones = splitPhones(b.phone)
   return (
     <div className="space-y-2 px-1">
-      {phones.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {phones.map((p) => <a key={p.href} href={p.href} className="chip border-brand-200 bg-brand-50 text-brand-800"><Phone className="size-3" /> {p.display}</a>)}
-        </div>
-      )}
+      {phones.length > 0 && <Phones text={b.phone} />}
       {b.contacts.length === 0 && <p className="text-sm text-muted">{t('business.none')}</p>}
       {b.contacts.map((c) => (
         <div key={c.id} className="flex items-start gap-2 rounded-xl p-1.5 hover:bg-canvas">
           <div className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">{c.name.slice(0, 1)}</div>
-          <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onEdit?.(c)} disabled={!onEdit}>
-            <div className="flex items-center gap-1 text-sm font-medium">
-              {c.name} {c.decisionMaker && <Star className="size-3.5 fill-amber-400 text-amber-400" />}
-            </div>
-            <div className="text-xs text-muted">{[c.roleTitle, c.preferredChannel !== 'ANY' ? t(`channel.${c.preferredChannel}`) : null].filter(Boolean).join(' · ')}</div>
-            {c.notes && <div className="text-xs text-muted">{c.notes}</div>}
-          </button>
-          {c.phone && splitPhones(c.phone).map((p) => (
-            <a key={p.href} href={p.href} className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-600 text-white" title={p.display}><Phone className="size-3.5" /></a>
-          ))}
+          <div className="min-w-0 flex-1">
+            <button type="button" className="w-full text-left" onClick={() => onEdit?.(c)} disabled={!onEdit}>
+              <div className="flex items-center gap-1 text-sm font-medium">
+                {c.name} {c.decisionMaker && <Star className="size-3.5 fill-amber-400 text-amber-400" />}
+              </div>
+              <div className="text-xs text-muted">{[c.roleTitle, c.preferredChannel !== 'ANY' ? t(`channel.${c.preferredChannel}`) : null].filter(Boolean).join(' · ')}</div>
+              {c.notes && <div className="text-xs text-muted">{c.notes}</div>}
+            </button>
+            {c.phone && <Phones text={c.phone} className="mt-1" />}
+          </div>
+          {onEdit && (
+            <button type="button" className="btn-ghost shrink-0 p-1.5" title={t('common.edit')} onClick={() => onEdit(c)}>
+              <Pencil className="size-3.5" />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -416,19 +449,36 @@ function CommentBox({ businessId }: { businessId: number }) {
   )
 }
 
-function ActivityList({ items, loading, empty, action }: { items: TimelineItem[]; loading: boolean; empty: string; action?: ReactNode }) {
+function ActivityList({ items, loading, empty, action, businessId, onEdit }: {
+  items: TimelineItem[]; loading: boolean; empty: string; action?: ReactNode; businessId: number
+  onEdit?: (id: number) => void
+}) {
   return (
     <div className="space-y-3">
       {action && <div className="flex justify-end">{action}</div>}
       {loading ? <Loading /> : items.length === 0 ? <div className="card"><EmptyState title={empty} /></div> : (
-        <div className="card p-4"><Timeline items={items} /></div>
+        <div className="card p-4"><Timeline items={items} businessId={businessId} onEdit={onEdit} /></div>
       )}
     </div>
   )
 }
 
-function Timeline({ items }: { items: TimelineItem[] }) {
+function Timeline({ items, businessId, onEdit }: { items: TimelineItem[]; businessId: number; onEdit?: (id: number) => void }) {
   const { t, lang } = useI18n()
+  const toast = useToast()
+  const refresh = useRefreshWork()
+
+  const remove = async (item: TimelineItem) => {
+    if (!window.confirm(t('activity.deleteConfirm'))) return
+    try {
+      await api.del(`/businesses/${businessId}/activities/${item.refId}`)
+      toast.ok(t('activity.deleted'))
+      refresh(businessId)
+    } catch (error) {
+      toast.error(error)
+    }
+  }
+
   return (
     <ol className="relative space-y-4 border-l border-line pl-5">
       {items.map((item) => (
@@ -439,7 +489,19 @@ function Timeline({ items }: { items: TimelineItem[] }) {
             {item.kind === 'ACTIVITY' && item.result && <ResultBadge result={item.result} />}
             {item.kind === 'PURCHASE' && <span className="font-semibold text-emerald-700">{money(item.amount)}</span>}
             {item.imported && <span className="rounded bg-lime-brand/40 px-1.5 text-[11px] font-medium text-emerald-900">{t('timeline.imported')}</span>}
+            {onEdit && item.kind === 'ACTIVITY' && (
+              <span className="ml-auto flex shrink-0 gap-1">
+                <button type="button" className="btn-ghost p-1" title={t('activity.edit')} onClick={() => onEdit(item.refId)}><Pencil className="size-3.5" /></button>
+                <button type="button" className="btn-ghost p-1 text-rose-700" title={t('activity.delete')} onClick={() => void remove(item)}><X className="size-3.5" /></button>
+              </span>
+            )}
           </div>
+          {item.results && item.results.length > 1 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {item.results.slice(1).map((r) => <ResultBadge key={r} result={r} />)}
+            </div>
+          )}
+          {item.resultNote && <p className="mt-1 text-sm italic">{item.resultNote}</p>}
           <div className="text-xs text-muted">
             {fmtDateTime(item.at, lang)}{item.user && ` · ${item.user.fullName}`}{item.contact && ` · ${item.contact.name}`}
           </div>
@@ -480,8 +542,9 @@ function dotFor(item: TimelineItem): string {
 
 // ----------------------------------------------------------------------------- tabs
 
-function AnswersTab({ b, editable, onAddUsage, onAddInterest, onEdit }: {
-  b: BusinessDetail; editable: boolean; onAddUsage: () => void; onAddInterest: () => void; onEdit: () => void
+function AnswersTab({ b, editable, onAddUsage, onEditUsage, onAddInterest, onEdit }: {
+  b: BusinessDetail; editable: boolean; onAddUsage: () => void; onEditUsage: (usage: UsageDto) => void
+  onAddInterest: () => void; onEdit: () => void
 }) {
   const { t, name } = useI18n()
   const toast = useToast()
@@ -568,7 +631,12 @@ function AnswersTab({ b, editable, onAddUsage, onAddInterest, onEdit }: {
                 <span className="w-28 shrink-0 text-xs text-muted">{name(lookups.data?.categories.find((c) => c.id === u.categoryId))}</span>
                 <span className={`w-32 shrink-0 font-medium ${u.ownBrand ? 'text-brand-700' : ''}`}>{u.brandName ?? t('business.noBrand')}</span>
                 <span className="min-w-0 flex-1 truncate">{u.flavor ? name(u.flavor) : u.productName ?? '-'}{u.quantity ? ` · ${u.quantity}` : ''}{u.frequency ? ` / ${u.frequency}` : ''}</span>
-                {editable && <button type="button" className="btn-ghost p-1.5" onClick={() => void remove(`/businesses/${b.id}/usages/${u.id}`)} aria-label="remove"><X className="size-4" /></button>}
+                {editable && (
+                  <>
+                    <button type="button" className="btn-ghost p-1.5" title={t('common.edit')} onClick={() => onEditUsage(u)}><Pencil className="size-4" /></button>
+                    <button type="button" className="btn-ghost p-1.5" onClick={() => void remove(`/businesses/${b.id}/usages/${u.id}`)} aria-label="remove"><X className="size-4" /></button>
+                  </>
+                )}
               </div>
             ))}
           </div>

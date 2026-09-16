@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import type { BrandDto, FlavorDto, InterestReason, InterestStatus, TastingFeedback } from '../lib/types'
+import type { BrandDto, FlavorDto, InterestReason, InterestStatus, TastingFeedback, UsageDto } from '../lib/types'
 import { keys, useLookups, useProducts, useRefreshWork } from '../lib/queries'
 import { useI18n } from '../i18n'
 import { ChipPicker } from './ChipPicker'
@@ -28,7 +28,9 @@ function useCatalogPickers() {
 }
 
 /** "They use Monin: vanilla, caramel, about 6 bottles a month." */
-export function UsageDialog({ open, onClose, businessId }: { open: boolean; onClose: () => void; businessId: number }) {
+export function UsageDialog({ open, onClose, businessId, usage }: {
+  open: boolean; onClose: () => void; businessId: number; usage?: UsageDto | null
+}) {
   const { t, name } = useI18n()
   const toast = useToast()
   const refresh = useRefreshWork()
@@ -41,18 +43,36 @@ export function UsageDialog({ open, onClose, businessId }: { open: boolean; onCl
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Only when the dialog opens: adding a brand or a flavor reloads the catalog, and that must not wipe
+  // what has been filled in so far.
   useEffect(() => {
     if (!open) return
-    setCategoryId(String(lookups.data?.categories.find((c) => c.nameEn === 'Syrup')?.id ?? ''))
-    setBrand([]); setFlavors([]); setQuantity(''); setFrequency(''); setNotes('')
-  }, [open, lookups.data])
+    setBrand(usage?.brandId ? [usage.brandId] : [])
+    setFlavors(usage?.flavor ? [usage.flavor.id] : [])
+    setQuantity(usage?.quantity ?? ''); setFrequency(usage?.frequency ?? ''); setNotes(usage?.notes ?? '')
+    setCategoryId(usage ? String(usage.categoryId) : '')
+  }, [open, usage])
+
+  // The default category waits for the catalog, without touching anything already chosen.
+  useEffect(() => {
+    if (open && !categoryId && lookups.data) {
+      setCategoryId(String(lookups.data.categories.find((c) => c.nameEn === 'Syrup')?.id ?? lookups.data.categories[0]?.id ?? ''))
+    }
+  }, [open, categoryId, lookups.data])
 
   const save = async () => {
     setSaving(true)
     try {
-      await api.post(`/businesses/${businessId}/usages`, {
-        categoryId: Number(categoryId), brandId: brand[0] ?? null, flavorIds: flavors, quantity, frequency, notes,
-      })
+      if (usage) {
+        await api.put(`/businesses/${businessId}/usages/${usage.id}`, {
+          categoryId: Number(categoryId), brandId: brand[0] ?? null, flavorId: flavors[0] ?? null,
+          productName: usage.productName, quantity, frequency, notes,
+        })
+      } else {
+        await api.post(`/businesses/${businessId}/usages`, {
+          categoryId: Number(categoryId), brandId: brand[0] ?? null, flavorIds: flavors, quantity, frequency, notes,
+        })
+      }
       toast.ok(t('common.saved'))
       refresh(businessId)
       onClose()
