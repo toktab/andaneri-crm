@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { CalendarClock, ChevronRight, Phone } from 'lucide-react'
-import { fmtDate, fmtDateTime } from '../../lib/format'
+import { fmtDate, fmtDateTime, formatPhone } from '../../lib/format'
 import type { GridRow } from '../../lib/types'
 import { useI18n } from '../../i18n'
 import { EmptyState, Loading, PriorityMark, Spinner, StatusBadge } from '../ui'
@@ -55,7 +55,7 @@ export function NamesList({ rows, total, loading, hasMore, loadingMore, onLoadMo
                 key={row.id}
                 type="button"
                 onClick={() => onOpen(row.id)}
-                className="group absolute inset-x-0 flex items-center gap-3 border-b border-line/70 px-3 text-left hover:bg-brand-50/60 sm:px-4"
+                className="group absolute inset-x-0 flex items-center gap-3 border-b border-line/70 px-3 text-left transition active:bg-brand-50 hover:bg-brand-50/60 sm:px-4"
                 style={{ height: ROW_HEIGHT, transform: `translateY(${item.start}px)` }}
               >
                 <div className="min-w-0 flex-1">
@@ -67,7 +67,7 @@ export function NamesList({ rows, total, loading, hasMore, loadingMore, onLoadMo
                   </div>
                   <div className="mt-0.5 flex min-w-0 items-center gap-x-3 gap-y-0 truncate text-xs text-muted">
                     <span className="contents sm:hidden"><StatusBadge status={row.status} /></span>
-                    {row.phone && <span className="inline-flex shrink-0 items-center gap-1"><Phone className="size-3" /> {row.phone}</span>}
+                    {row.phone && <span className="inline-flex shrink-0 items-center gap-1 tabular-nums"><Phone className="size-3" /> {formatPhone(row.phone)}</span>}
                     {row.nextTask ? (
                       <span className={`inline-flex shrink-0 items-center gap-1 ${overdue ? 'font-medium text-rose-600' : 'text-ink/70'}`}>
                         <CalendarClock className="size-3" /> {t(`taskType.${row.nextTask.type}`)} {fmtDateTime(row.nextTask.dueAt, lang)}

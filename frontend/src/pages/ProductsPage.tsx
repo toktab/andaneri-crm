@@ -63,7 +63,7 @@ export function ProductsPage() {
             {products.isLoading ? <Loading /> : sections.length === 0 ? <div className="card"><EmptyState title={t('common.noResults')} /></div> : (
               <div className="grid gap-4 lg:grid-cols-2">
                 {sections.map(([section, items]) => (
-                  <section key={section} className="card p-3">
+                  <section key={section} className="card min-w-0 p-3">
                     <h2 className="mb-2 px-1 text-sm font-semibold text-raspberry">{section}</h2>
                     <ul className="divide-y divide-line">
                       {items.map((p) => (

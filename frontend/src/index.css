@@ -157,6 +157,42 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* A phone screen is narrow enough that one stray wide element would make the whole page slide
+     sideways under the thumb. Anything that really needs width scrolls inside its own box. */
+  overflow-x: clip;
+}
+
+/*
+ * Touch devices. Everything in here is about the hand, not the screen size: a laptop with a touch
+ * screen gets it too, and a narrow desktop window does not.
+ */
+@media (pointer: coarse) {
+  /* No grey flash on tap, and no 300 ms wait for a second tap that never comes. */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  label,
+  select,
+  summary {
+    touch-action: manipulation;
+  }
+
+  /* iOS zooms the page in when a field smaller than 16px takes focus, and never zooms back out. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* A thumb is about 9 mm wide: everything that can be pressed is at least 44 px tall. */
+  .btn,
+  button.btn-primary,
+  button.btn-secondary {
+    min-height: 44px;
+  }
 }
 
 /* Georgian script reads better with a touch more line height than Latin. */
@@ -216,6 +252,20 @@ body {
   @apply chip border-brand-600 bg-brand-600 text-white;
 }
 
+/* Room for the home indicator on an iPhone, under a bar that sits on the bottom edge. */
+@utility pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@utility bottom-safe {
+  bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/* A card or row that answers a tap by giving way a little, the way a native list does. */
+@utility pressable {
+  @apply transition active:scale-[0.985] active:brightness-95;
+}
+
 /* Long lists and the spreadsheet: skip laying out what is off screen. */
 @utility scroll-area {
   @apply overflow-auto overscroll-contain;
@@ -250,5 +300,23 @@ body {
   .card {
     box-shadow: none;
     break-inside: avoid;
+  }
+}
+
+/* A sheet sliding up from the bottom edge, and the row behind a swiped-away list item. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(12%);
+    opacity: 0.6;
+  }
+}
+
+.sheet-in {
+  animation: sheet-in 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-in {
+    animation: none;
   }
 }

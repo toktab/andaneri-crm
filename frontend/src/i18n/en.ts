@@ -5,8 +5,9 @@ export const en: Dict = {
   nav: {
     today: 'Today', calls: 'Calls', businesses: 'Businesses', pipeline: 'Pipeline', calendar: 'Calendar',
     tasks: 'Tasks', notes: 'Notes', products: 'Products', reports: 'Reports', import: 'Import / export',
-    admin: 'Admin', more: 'More', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
+    admin: 'Admin', more: 'More', start: 'Start', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
   },
+  install: { title: 'Add the CRM to your Home Screen', hint: 'It opens like an app, full screen, and reminders can reach you.', button: 'Add' },
   notify: {
     title: 'Reminders', whenTitle: 'How long before to remind me', whenHint: 'For every task, unless the task says another time.',
     none: 'No reminder', minutes: '{n} min', hours: '{n} h', days: '{n} day(s)',
@@ -145,7 +146,9 @@ export const en: Dict = {
     CREATED: 'Added to the CRM', STATUS: 'Status changed', COMMENT: 'Comment', PURCHASE: 'Order',
     TASK_DONE: 'Task done', TASK_CANCELLED: 'Task cancelled', imported: 'From Excel',
   },
+  start: { note: 'Quick note', business: 'New business', task: 'New task', call: 'Call mode' },
   dashboard: {
+    nextUp: 'Up next', moreWaiting: '{n} more',
     morning: 'Good morning, {name}', afternoon: 'Hello, {name}', evening: 'Good evening, {name}',
     overdue: 'Overdue', today: "Today's tasks", upcoming: 'Coming up ({n} days)', nothingToday: 'Nothing planned today',
     nothingOverdue: 'Nothing overdue', pipeline: 'Pipeline', alerts: 'Needs attention', noAlerts: 'All good',
@@ -271,6 +274,7 @@ export const en: Dict = {
     business: 'Business', noBusiness: 'No business', complete: 'Done', completeWithLog: 'Done + log',
     cancelTask: 'Cancel task', empty: 'No tasks', move: 'Move',
     remindMe: 'Remind me', remindDefault: 'My default time', addToCalendar: 'Add to my calendar',
+    movedTomorrow: 'Moved to tomorrow', swipeHint: 'Swipe: right to tick off, left for tomorrow',
     imported: 'Excel', importedHint: 'A guess read off the spreadsheet - nobody planned it',
     clearImported: 'Clear Excel tasks', clearImportedConfirm: 'Cancel every open task that came from the spreadsheet?',
     clearedImported: '{n} tasks cancelled', hideImported: 'Hide Excel ones',

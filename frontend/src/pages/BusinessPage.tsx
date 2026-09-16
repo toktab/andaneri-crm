@@ -106,7 +106,8 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
   const typeName = name(lookups.data?.businessTypes.find((x) => x.id === b.typeId))
 
   return (
-    <div>
+    // Room at the bottom for the action bar that floats over the page on a phone.
+    <div className={embedded ? '' : 'pb-16 md:pb-0'}>
       {!embedded && <Link to="/businesses" className="btn-ghost -ml-2 mb-2 px-2 text-sm"><ArrowLeft className="size-4" /> {backLabel}</Link>}
 
       <div className="card mb-4 p-4">
@@ -139,7 +140,7 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
               )}
             </div>
           </div>
-          <div className="no-print flex flex-wrap gap-2">
+          <div className="no-print hidden flex-wrap gap-2 md:flex">
             <Link to={`/calls/${b.id}`} className="btn-primary"><Phone className="size-4" /> {t('dashboard.startCalling')}</Link>
             {editable && (
               <>
@@ -153,6 +154,26 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
           </div>
         </div>
       </div>
+
+      {/* The bar a thumb reaches without moving the hand. It sits above the navigation, out of the way of the file. */}
+      {!embedded && (
+        <div className="no-print fixed inset-x-0 bottom-[calc(3.9rem+env(safe-area-inset-bottom))] z-30 flex gap-2 border-t border-line bg-surface/95 py-2 pl-3 pr-[4.75rem] backdrop-blur md:hidden">
+          <Link to={`/calls/${b.id}`} className="btn-primary flex-1 py-3"><Phone className="size-5" /> {t('dashboard.startCalling')}</Link>
+          {editable && (
+            <>
+              <button type="button" className="btn-secondary px-4 py-3" onClick={() => setLog({ type: 'VISIT', task: null })} title={t('business.logActivity')}>
+                <MessageSquare className="size-5" />
+              </button>
+              <button type="button" className="btn-secondary px-4 py-3" onClick={() => setTaskOpen('new')} title={t('business.schedule')}>
+                <CalendarPlus className="size-5" />
+              </button>
+              <button type="button" className="btn-secondary px-4 py-3" onClick={() => setEditOpen(true)} title={t('business.editDetails')}>
+                <Pencil className="size-5" />
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <Tabs<Tab>
         value={tab}
@@ -171,7 +192,7 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
       <div className="mt-4">
         {tab === 'summary' && (
           <div className="grid gap-4 lg:grid-cols-3">
-            <div className="space-y-4 lg:col-span-2">
+            <div className="min-w-0 space-y-4 lg:col-span-2">
               <Card title={t('business.nextStep')} action={editable && <IconButton onClick={() => setTaskOpen('new')}><Plus className="size-4" /></IconButton>}>
                 {b.openTasks.length === 0 ? <p className="px-1 text-sm text-rose-600">{t('business.noNextStep')}</p> : (
                   b.openTasks.map((task) => <TaskRow key={task.id} task={task} showDate editable={editable} onOpen={setTaskOpen} onComplete={completeTask} />)

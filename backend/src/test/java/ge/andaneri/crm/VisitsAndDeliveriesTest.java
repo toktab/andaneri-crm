@@ -107,6 +107,31 @@ class VisitsAndDeliveriesTest {
         assertThat(open).isEmpty();
     }
 
+    @Test
+    void aTaskCanBePushedToAnotherDay() throws Exception {
+        String admin = login("admin", "test-admin-password");
+        Integer barId = JsonPath.read(call(admin, post("/api/businesses").content("""
+                {"name":"Pushed Bar"}"""), 200), "$.id");
+
+        String today = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+        String hourLater = Instant.parse(today).plus(1, ChronoUnit.HOURS).toString();
+        String created = call(admin, post("/api/tasks").content("""
+                {"businessId":%d,"type":"MEETING","title":"Tasting","dueAt":"%s","endAt":"%s"}""".formatted(barId, today, hourLater)), 200);
+        Integer taskId = JsonPath.read(created, "$.id");
+        String endAt = JsonPath.read(created, "$.endAt");
+        assertThat(Instant.parse(endAt)).isEqualTo(Instant.parse(hourLater));
+
+        // What a swipe to "tomorrow" sends: the new time and nothing else.
+        String tomorrow = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS).toString();
+        String moved = call(admin, post("/api/tasks/" + taskId + "/move").content("""
+                {"dueAt":"%s"}""".formatted(tomorrow)), 200);
+        assertThat(Instant.parse(JsonPath.read(moved, "$.dueAt"))).isEqualTo(Instant.parse(tomorrow));
+        assertThat((String) JsonPath.read(moved, "$.title")).isEqualTo("Tasting");
+        // The meeting still lasts as long as it did, one day later.
+        assertThat(Instant.parse(JsonPath.read(moved, "$.endAt"))).isEqualTo(Instant.parse(endAt).plus(1, ChronoUnit.DAYS));
+        assertThat((String) JsonPath.read(moved, "$.status")).isEqualTo("OPEN");
+    }
+
     private String login(String username, String password) throws Exception {
         String body = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))

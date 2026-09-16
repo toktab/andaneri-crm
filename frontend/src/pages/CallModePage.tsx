@@ -17,6 +17,7 @@ import { BusinessEditDialog } from '../components/BusinessEditDialog'
 import { PurchaseDialog } from '../components/PurchaseDialog'
 import { TaskRow } from '../components/TaskRow'
 import { useCanCall } from '../components/Phones'
+import { SwipeRow } from '../components/SwipeRow'
 import { useToast } from '../components/Toast'
 
 const QUICK_RESULTS: ActivityResult[] = ['TALKED', 'CALL_BACK', 'INTERESTED', 'MEETING_SET', 'SAMPLES_REQUESTED', 'NOT_INTERESTED']
@@ -204,6 +205,11 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
   const brands = [...new Set(used.map((u) => u.brandName).filter(Boolean))]
 
   return (
+    <SwipeRow
+      disabled={!position}
+      left={{ icon: <ArrowRight className="size-5" />, label: t('callMode.next'), tone: 'bg-brand-600', run: onNext }}
+      right={onPrev && { icon: <ArrowLeft className="size-5" />, label: t('callMode.prev'), tone: 'bg-brand-600', run: onPrev }}
+    >
     <div className="mx-auto max-w-5xl">
       {/* Header with queue navigation */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -216,7 +222,7 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
       </div>
 
       <div className="card mb-4 p-4">
-        <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold tracking-tight">{b.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -230,9 +236,9 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
               </div>
             )}
           </div>
-          <div className="flex gap-2">
-            {maps && <a href={maps} target="_blank" rel="noreferrer" className="btn-secondary"><MapPin className="size-4" /> {t('business.openMaps')}</a>}
-            <Link to={`/businesses/${b.id}`} className="btn-secondary"><ExternalLink className="size-4" /> {t('callMode.open')}</Link>
+          <div className="flex shrink-0 gap-2">
+            {maps && <a href={maps} target="_blank" rel="noreferrer" className="btn-secondary flex-1 sm:flex-none"><MapPin className="size-4" /> {t('business.openMaps')}</a>}
+            <Link to={`/businesses/${b.id}`} className="btn-secondary flex-1 sm:flex-none"><ExternalLink className="size-4" /> {t('callMode.open')}</Link>
           </div>
         </div>
 
@@ -372,7 +378,7 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
           </section>
         </div>
 
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <section className="card p-4">
             <h2 className="mb-2 text-sm font-semibold">{t('business.lastTime')}</h2>
             {b.lastActivity ? (
@@ -453,5 +459,6 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
       <BusinessEditDialog open={editOpen} onClose={() => setEditOpen(false)} business={b} />
       <PurchaseDialog open={purchaseOpen} onClose={() => setPurchaseOpen(false)} business={b} />
     </div>
+    </SwipeRow>
   )
 }

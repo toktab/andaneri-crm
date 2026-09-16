@@ -6,8 +6,9 @@ export const ka = {
   nav: {
     today: 'დღეს', calls: 'ზარები', businesses: 'ბიზნესები', pipeline: 'ფაიპლაინი', calendar: 'კალენდარი',
     tasks: 'ამოცანები', notes: 'ჩანაწერები', products: 'პროდუქცია', reports: 'რეპორტი', import: 'იმპორტი / ექსპორტი',
-    admin: 'ადმინისტრირება', more: 'სხვა', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
+    admin: 'ადმინისტრირება', more: 'სხვა', start: 'დაწყება', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
   },
+  install: { title: 'დაამატეთ CRM მთავარ ეკრანზე', hint: 'გაიხსნება აპივით, სრულ ეკრანზე, და შეხსენებებიც მოვა.', button: 'დამატება' },
   notify: {
     title: 'შეხსენებები', whenTitle: 'რამდენი ხნით ადრე შემახსენოს', whenHint: 'ყველა ამოცანაზე, თუ ამოცანაში სხვა დრო არ წერია.',
     none: 'არ შემახსენო', minutes: '{n} წთ', hours: '{n} სთ', days: '{n} დღე',
@@ -146,7 +147,9 @@ export const ka = {
     CREATED: 'დაემატა CRM-ში', STATUS: 'სტატუსი შეიცვალა', COMMENT: 'კომენტარი', PURCHASE: 'შეკვეთა',
     TASK_DONE: 'ამოცანა შესრულდა', TASK_CANCELLED: 'ამოცანა გაუქმდა', imported: 'Excel-დან',
   },
+  start: { note: 'სწრაფი ჩანაწერი', business: 'ახალი ბიზნესი', task: 'ახალი ამოცანა', call: 'ზარების რეჟიმი' },
   dashboard: {
+    nextUp: 'ახლა რიგზეა', moreWaiting: 'კიდევ {n}',
     morning: 'დილა მშვიდობისა, {name}', afternoon: 'გამარჯობა, {name}', evening: 'საღამო მშვიდობისა, {name}',
     overdue: 'ვადაგადაცილებული', today: 'დღის ამოცანები', upcoming: 'მოახლოებული ({n} დღე)', nothingToday: 'დღეს დაგეგმილი არაფერია',
     nothingOverdue: 'ვადაგადაცილებული არაფერია', pipeline: 'ფაიპლაინი', alerts: 'ყურადღება', noAlerts: 'ყველაფერი რიგზეა',
@@ -272,6 +275,7 @@ export const ka = {
     business: 'ბიზნესი', noBusiness: 'ბიზნესის გარეშე', complete: 'შესრულდა', completeWithLog: 'შესრულდა + ჩანაწერი',
     cancelTask: 'ამოცანის გაუქმება', empty: 'ამოცანები არ არის', move: 'გადატანა',
     remindMe: 'შემახსენე', remindDefault: 'ჩემი ნაგულისხმევი დრო', addToCalendar: 'ჩემს კალენდარში დამატება',
+    movedTomorrow: 'ხვალ გადავიდა', swipeHint: 'გადაასრიალე: მარჯვნივ - შესრულდა, მარცხნივ - ხვალ',
     imported: 'Excel', importedHint: 'Excel-იდან ამოღებული ვარაუდი - არავის დაუგეგმავს',
     clearImported: 'Excel-ის ამოცანების გასუფთავება', clearImportedConfirm: 'გავასუფთავოთ Excel-იდან წამოღებული ყველა ღია ამოცანა?',
     clearedImported: '{n} ამოცანა გაუქმდა', hideImported: 'Excel-ის დამალვა',

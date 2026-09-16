@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { CircleAlert, LoaderCircle, X } from 'lucide-react'
 import type { BusinessStatus, Priority } from '../lib/types'
+import { useDragToClose, useIsPhone } from '../lib/mobile'
 import { useI18n } from '../i18n'
 import { errorText } from './Toast'
 
@@ -8,10 +9,17 @@ export function Spinner({ className = 'size-5' }: { className?: string }) {
   return <LoaderCircle className={`animate-spin ${className}`} aria-hidden />
 }
 
-/** A bottom sheet on phones, a centred dialog on wider screens. Escape and a click outside close it. */
+/**
+ * A bottom sheet on phones, a centred dialog on wider screens. On a phone it slides up, can be pulled
+ * back down by its handle to dismiss, and keeps its buttons on the bottom edge above the home indicator.
+ * Escape and a click outside close it too.
+ */
 export function Modal({
   open, onClose, title, children, footer, wide,
 }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  const phone = useIsPhone()
+  const sheet = useDragToClose(onClose, phone)
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -33,20 +41,27 @@ export function Modal({
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
+        ref={sheet.ref}
         role="dialog"
         aria-modal="true"
         data-modal=""
-        className={`flex max-h-[94dvh] w-full flex-col rounded-t-3xl bg-surface shadow-2xl sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
+        className={`sheet-in flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-surface shadow-2xl sm:max-h-[94dvh] sm:animate-none sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-          <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
-          <button type="button" className="btn-ghost -mr-2 p-2" onClick={onClose} aria-label="close">
-            <X className="size-5" />
-          </button>
+        <div className="shrink-0 rounded-t-3xl" {...sheet.handlers}>
+          {/* The grab bar: what a thumb reaches for to flick the sheet away. */}
+          <div className="grid place-items-center pb-1 pt-2 sm:hidden">
+            <span className="h-1 w-10 rounded-full bg-line" />
+          </div>
+          <div className="flex items-center justify-between gap-3 border-b border-line px-5 pb-3 pt-1 sm:py-3.5">
+            <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
+            <button type="button" className="btn-ghost -mr-2 p-2" onClick={onClose} aria-label="close">
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
         {footer && (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3 pb-safe [&>button]:flex-1 sm:[&>button]:flex-none">
             {footer}
           </div>
         )}

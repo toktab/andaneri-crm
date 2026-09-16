@@ -303,6 +303,24 @@ public class WorkService {
         return TaskDto.of(task);
     }
 
+    /**
+     * Moves a task to another time and nothing else: what a swipe to "tomorrow" on a phone does.
+     * A meeting keeps how long it lasts, and the reminder goes out again at the new time.
+     */
+    @Transactional
+    public TaskDto moveTask(Long id, Instant dueAt, User user) {
+        Task task = editableTask(id, user);
+        Instant before = task.getDueAt();
+        if (task.getEndAt() != null) {
+            task.setEndAt(task.getEndAt().plusMillis(dueAt.toEpochMilli() - before.toEpochMilli()));
+        }
+        task.setDueAt(dueAt);
+        task.setRemindedAt(null);
+        audit.record(task.getBusiness() == null ? null : task.getBusiness().getId(), "Task", id, "UPDATED",
+                "moved " + before + " -> " + dueAt, user);
+        return TaskDto.of(task);
+    }
+
     /** Completes a task. With an activity, the call or meeting is recorded in the same step and linked to it. */
     @Transactional
     public TaskDto completeTask(Long id, ActivityRequest activity, User user) {

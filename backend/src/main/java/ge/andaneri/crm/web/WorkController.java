@@ -14,6 +14,7 @@ import ge.andaneri.crm.web.WorkDtos.TaskDto;
 import ge.andaneri.crm.web.WorkDtos.TaskRequest;
 import ge.andaneri.crm.web.WorkDtos.TimelineItem;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -148,6 +149,14 @@ public class WorkController {
     public TaskDto updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
         return service.updateTask(id, request, currentUser.require());
     }
+
+    /** Just the time, for a task pushed to another day from a list. */
+    @PostMapping("/tasks/{id}/move")
+    public TaskDto moveTask(@PathVariable Long id, @Valid @RequestBody MoveRequest request) {
+        return service.moveTask(id, request.dueAt(), currentUser.require());
+    }
+
+    public record MoveRequest(@NotNull Instant dueAt) {}
 
     @PostMapping("/tasks/{id}/complete")
     public TaskDto complete(@PathVariable Long id, @Valid @RequestBody(required = false) CompleteRequest request) {

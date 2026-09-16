@@ -1,18 +1,21 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarPlus, Flame, Phone, Plus, ShoppingCart, Sparkles, TriangleAlert } from 'lucide-react'
+import { CalendarPlus, ChevronRight, CircleCheck, Flame, Phone, Plus, ShoppingCart, Sparkles, TriangleAlert } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
 import { useDashboard, useRefreshWork } from '../lib/queries'
-import { fmtShortDate, fmtWeekday, money } from '../lib/format'
+import { fmtShortDate, fmtTime, fmtWeekday, money } from '../lib/format'
 import type { Alert, BusinessStatus, TaskDto } from '../lib/types'
 import { STATUSES } from '../lib/types'
+import { useIsPhone, tap } from '../lib/mobile'
 import { useI18n } from '../i18n'
 import { Choice, EmptyState, ErrorBlock, Loading, PageHeader, STATUS_STYLE, Stat } from '../components/ui'
-import { TaskRow } from '../components/TaskRow'
+import { TaskRow, TYPE_TONE } from '../components/TaskRow'
+import { Phones } from '../components/Phones'
 import { TaskDialog } from '../components/TaskDialog'
 import { QuickAddDialog } from '../components/QuickAddDialog'
+import { InstallPrompt } from '../components/InstallPrompt'
 import { useToast } from '../components/Toast'
 
 const ACTIVE_PIPELINE: BusinessStatus[] = ['NEW', 'CONTACTED', 'INTERESTED', 'MEETING', 'TESTING', 'NEGOTIATION', 'CUSTOMER', 'REPEAT_CUSTOMER']
@@ -20,6 +23,7 @@ const ACTIVE_PIPELINE: BusinessStatus[] = ['NEW', 'CONTACTED', 'INTERESTED', 'ME
 /** 12:00, arriving at work: who to call, who to visit, what meetings, what is late, what needs attention. */
 export function DashboardPage() {
   const { t, lang } = useI18n()
+  const phone = useIsPhone()
   const { user, isSupervisor } = useAuth()
   const { canEdit } = useMode()
   const toast = useToast()
@@ -58,7 +62,10 @@ export function DashboardPage() {
   if (dashboard.error || !dashboard.data) return <ErrorBlock error={dashboard.error} onRetry={() => dashboard.refetch()} />
   const d = dashboard.data
   const maxPipeline = Math.max(1, ...ACTIVE_PIPELINE.map((s) => d.pipeline[s] ?? 0))
-  const callsWaiting = [...d.overdue, ...d.today].filter((task) => task.status === 'OPEN' && task.businessId).length
+  const waiting = [...d.overdue, ...d.today].filter((task) => task.status === 'OPEN' && task.businessId)
+  const callsWaiting = waiting.length
+  // The one thing to do next: the oldest thing still open today. On a phone it gets its own card.
+  const next = waiting[0] ?? null
 
   return (
     <div>
@@ -70,7 +77,7 @@ export function DashboardPage() {
             {isSupervisor && (
               <Choice size="sm" options={[{ value: 'mine', label: t('dashboard.scopeMine') }, { value: 'team', label: t('dashboard.scopeTeam') }]} value={scope} onChange={setScope} />
             )}
-            {editable && (
+            {editable && !phone && (
               <>
                 <button type="button" className="btn-secondary" onClick={() => setNewTask(true)}>
                   <CalendarPlus className="size-4" /> <span className="hidden sm:inline">{t('tasks.newTask')}</span>
@@ -80,25 +87,49 @@ export function DashboardPage() {
                 </button>
               </>
             )}
-            <Link to="/calls" className="btn-primary">
-              <Phone className="size-4" /> {t('dashboard.startCalling')}
-              {callsWaiting > 0 && <span className="rounded-full bg-surface/25 px-1.5 text-xs">{callsWaiting}</span>}
-            </Link>
+            {!phone && (
+              <Link to="/calls" className="btn-primary">
+                <Phone className="size-4" /> {t('dashboard.startCalling')}
+                {callsWaiting > 0 && <span className="rounded-full bg-surface/25 px-1.5 text-xs">{callsWaiting}</span>}
+              </Link>
+            )}
           </>
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label={t('dashboard.callsToday')} value={d.stats.callsToday} />
-        <Stat label={t('dashboard.visitsToday')} value={d.stats.visitsToday} />
-        <Stat label={t('dashboard.meetingsToday')} value={d.stats.meetingsToday} />
-        <Stat label={t('dashboard.weekActivity')} value={d.stats.activitiesThisWeek} />
-        <Stat label={t('dashboard.newLeadsWeek')} value={d.stats.newLeadsThisWeek} />
-        <Stat label={t('dashboard.salesMonth')} value={money(d.stats.salesThisMonth)} sub={`${d.stats.purchasesThisMonth} ${t('reports.purchases').toLowerCase()}`} tone="text-emerald-700" />
-      </div>
+      <InstallPrompt />
+
+      {phone && <NextUp task={next} onComplete={complete} onOpen={setOpenTask} editable={editable} waiting={callsWaiting} />}
+
+      {phone ? (
+        <div className="-mx-4 mb-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+          {[
+            [t('dashboard.callsToday'), String(d.stats.callsToday), ''],
+            [t('dashboard.visitsToday'), String(d.stats.visitsToday), ''],
+            [t('dashboard.meetingsToday'), String(d.stats.meetingsToday), ''],
+            [t('dashboard.weekActivity'), String(d.stats.activitiesThisWeek), ''],
+            [t('dashboard.newLeadsWeek'), String(d.stats.newLeadsThisWeek), ''],
+            [t('dashboard.salesMonth'), money(d.stats.salesThisMonth), 'text-emerald-700'],
+          ].map(([label, value, tone]) => (
+            <div key={label} className="card shrink-0 snap-start px-3 py-2">
+              <div className="whitespace-nowrap text-[11px] text-muted">{label}</div>
+              <div className={`text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+          <Stat label={t('dashboard.callsToday')} value={d.stats.callsToday} />
+          <Stat label={t('dashboard.visitsToday')} value={d.stats.visitsToday} />
+          <Stat label={t('dashboard.meetingsToday')} value={d.stats.meetingsToday} />
+          <Stat label={t('dashboard.weekActivity')} value={d.stats.activitiesThisWeek} />
+          <Stat label={t('dashboard.newLeadsWeek')} value={d.stats.newLeadsThisWeek} />
+          <Stat label={t('dashboard.salesMonth')} value={money(d.stats.salesThisMonth)} sub={`${d.stats.purchasesThisMonth} ${t('reports.purchases').toLowerCase()}`} tone="text-emerald-700" />
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           {d.overdue.length > 0 && (
             <section className="card border-rose-200 p-3">
               <h2 className="mb-1 flex items-center gap-2 px-2 text-sm font-semibold text-rose-700">
@@ -129,7 +160,7 @@ export function DashboardPage() {
           </section>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 [&>section:nth-child(n+2)]:hidden md:[&>section:nth-child(n+2)]:block">
           <section className="card p-3">
             <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
               <Flame className="size-4 text-raspberry" /> {t('dashboard.alerts')}
@@ -202,5 +233,62 @@ function AlertRow({ alert }: { alert: Alert }) {
         </span>
       </Link>
     </li>
+  )
+}
+
+/**
+ * What to do next, as the first thing on a phone screen: the time, the place, the number to ring,
+ * and one press to tick it off. Everything else on the page is the rest of the day.
+ */
+function NextUp({ task, waiting, editable, onComplete, onOpen }: {
+  task: TaskDto | null
+  waiting: number
+  editable: boolean
+  onComplete: (task: TaskDto) => void
+  onOpen: (task: TaskDto) => void
+}) {
+  const { t } = useI18n()
+  if (!task) {
+    return (
+      <Link to="/calls" className="card pressable mb-4 flex items-center gap-3 p-4">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700"><Phone className="size-5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">{t('dashboard.nothingToday')}</span>
+          <span className="block text-xs text-muted">{t('dashboard.startCalling')}</span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted" />
+      </Link>
+    )
+  }
+  return (
+    <section className="card mb-4 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 bg-brand-600 px-4 py-2 text-white">
+        <span className="text-xs font-semibold uppercase tracking-wide">{t('dashboard.nextUp')}</span>
+        {waiting > 1 && <span className="rounded-full bg-surface/25 px-2 text-xs">{t('dashboard.moreWaiting', { n: waiting - 1 })}</span>}
+      </div>
+      <button type="button" className="block w-full px-4 pb-1 pt-3 text-left" onClick={() => onOpen(task)}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold tabular-nums">{task.allDay ? '-' : fmtTime(task.dueAt)}</span>
+          <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${TYPE_TONE[task.type]}`}>{t(`taskType.${task.type}`)}</span>
+        </div>
+        <div className="mt-0.5 text-base font-semibold">{task.businessName ?? task.title}</div>
+        {task.businessName && task.title && <div className="text-sm text-muted">{task.title}</div>}
+      </button>
+      <div className="px-4 pb-3">
+        <Phones text={task.contact?.phone || task.businessPhone} size="lg" />
+        <div className="mt-3 flex gap-2">
+          {task.businessId && (
+            <Link to={`/calls/${task.businessId}?task=${task.id}`} className="btn-primary flex-1 py-3">
+              <Phone className="size-4" /> {t('callMode.title')}
+            </Link>
+          )}
+          {editable && (
+            <button type="button" className="btn-secondary flex-1 py-3 text-emerald-700" onClick={() => { tap(18); onComplete(task) }}>
+              <CircleCheck className="size-4" /> {t('tasks.complete')}
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }

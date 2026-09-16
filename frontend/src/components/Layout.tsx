@@ -1,20 +1,24 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ArrowDownUp, Bell, CalendarDays, ChartColumn, Clock, Eye, EyeOff, House, KeyRound, LayoutGrid, ListChecks, LogOut, Menu, Monitor, Moon, Package,
-  PenLine, Phone, Plus, Search, Settings, ShieldCheck, SquareKanban, StickyNote, Store, Sun,
+  ArrowDownUp, Bell, CalendarDays, CalendarPlus, ChartColumn, Clock, Eye, EyeOff, House, KeyRound, LayoutGrid, ListChecks, LogOut, Menu, Monitor, Moon,
+  Package, PenLine, Phone, Plus, Search, Settings, ShieldCheck, SquareKanban, StickyNote, Store, Sun, X,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
 import { pushOnHere, resyncPush } from '../lib/push'
 import { useTheme, type ThemeChoice } from '../lib/theme'
+import { useDashboard } from '../lib/queries'
+import { tap, useIsPhone } from '../lib/mobile'
+import { TaskDialog } from './TaskDialog'
 import { RemindersDialog } from './RemindersDialog'
 import { BackupReminder } from './BackupReminder'
 import { fmtTime } from '../lib/format'
 import type { NoteDto, TaskDto } from '../lib/types'
 import { useI18n } from '../i18n'
 import { GlobalSearch } from './GlobalSearch'
+import { PullToRefresh } from './PullToRefresh'
 import { QuickAddDialog } from './QuickAddDialog'
 import { NoteDialog } from './NoteDialog'
 import { Field, Loading, Modal, Spinner } from './ui'
@@ -51,6 +55,14 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [remindersOpen, setRemindersOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [taskOpen, setTaskOpen] = useState(false)
+  const phone = useIsPhone()
+
+  // What is still waiting today, as a number on the bottom bar: the reason to open the app at all.
+  const dashboard = useDashboard('mine', phone)
+  const waiting = [...(dashboard.data?.overdue ?? []), ...(dashboard.data?.today ?? [])]
+    .filter((task) => task.status === 'OPEN').length
 
   useReminders(user?.id ?? null)
 
@@ -73,6 +85,7 @@ export function Layout() {
   useEffect(() => {
     setMoreOpen(false)
     setMenuOpen(false)
+    setActionsOpen(false)
   }, [location.pathname])
 
   const nav = [
@@ -174,41 +187,54 @@ export function Layout() {
           <BackupReminder />
         </header>
 
-        <main className={`mx-auto w-full px-4 pb-28 pt-4 sm:px-6 md:pb-10 ${wide ? 'max-w-none' : 'max-w-7xl'}`}>
+        <main className={`mx-auto w-full px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 md:pb-10 ${wide ? 'max-w-none' : 'max-w-7xl'}`}>
           <Suspense fallback={<Loading />}>
-            <Outlet />
+            <PullToRefresh>
+              <Outlet />
+            </PullToRefresh>
           </Suspense>
         </main>
       </div>
 
-      {/* Quick note, one tap from anywhere */}
+      {/* Start something, one tap from anywhere */}
       {!observe && (
         <button
           type="button"
-          onClick={() => setNoteOpen(true)}
-          className="no-print fixed bottom-20 right-4 z-30 grid size-12 place-items-center rounded-full bg-brand-600 text-white shadow-lg hover:brightness-110 md:bottom-6 md:right-6"
-          title={t('notes.title')}
+          onClick={() => { tap(); setActionsOpen(true) }}
+          className="no-print fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 grid size-14 place-items-center rounded-full bg-brand-600 text-white shadow-lg transition active:scale-95 hover:brightness-110 md:bottom-6 md:right-6 md:size-12"
+          title={t('nav.start')}
         >
-          <PenLine className="size-5" />
+          {actionsOpen ? <X className="size-6" /> : <Plus className="size-6" />}
         </button>
       )}
 
       {/* Bottom bar on phones */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid grid-cols-5">
           {nav.filter((item) => MOBILE_MAIN.includes(item.key)).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
-              className={({ isActive }) => `flex min-w-0 flex-col items-center gap-0.5 px-0.5 py-2 text-[10px] font-medium sm:text-[11px] ${isActive ? 'text-brand-700' : 'text-muted'}`}
+              onClick={() => tap(8)}
+              className={({ isActive }) => `relative flex min-w-0 flex-col items-center gap-0.5 px-0.5 pb-1.5 pt-2 text-[10px] font-medium transition active:scale-95 sm:text-[11px] ${isActive ? 'text-brand-700' : 'text-muted'}`}
             >
-              <item.icon className="size-5 shrink-0" />
-              <span className="w-full truncate text-center">{t(`nav.${item.key}`)}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={`absolute inset-x-3 top-0 h-0.5 rounded-full ${isActive ? 'bg-brand-600' : 'bg-transparent'}`} />
+                  <span className="relative">
+                    <item.icon className="size-6 shrink-0" />
+                    {item.key === 'calls' && waiting > 0 && (
+                      <span className="absolute -right-2 -top-1 grid min-w-4 place-items-center rounded-full bg-raspberry px-1 text-[10px] font-bold leading-4 text-white">{waiting}</span>
+                    )}
+                  </span>
+                  <span className="w-full truncate text-center">{t(`nav.${item.key}`)}</span>
+                </>
+              )}
             </NavLink>
           ))}
-          <button type="button" onClick={() => setMoreOpen(true)} className="flex min-w-0 flex-col items-center gap-0.5 px-0.5 py-2 text-[10px] font-medium text-muted sm:text-[11px]">
-            <Menu className="size-5 shrink-0" />
+          <button type="button" onClick={() => { tap(8); setMoreOpen(true) }} className="flex min-w-0 flex-col items-center gap-0.5 px-0.5 pb-1.5 pt-2 text-[10px] font-medium text-muted transition active:scale-95 sm:text-[11px]">
+            <Menu className="size-6 shrink-0" />
             <span className="w-full truncate text-center">{t('nav.more')}</span>
           </button>
         </div>
@@ -217,13 +243,39 @@ export function Layout() {
       <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={t('nav.more')}>
         <div className="grid grid-cols-3 gap-2">
           {nav.filter((item) => !MOBILE_MAIN.includes(item.key)).map((item) => (
-            <NavLink key={item.to} to={item.to} className="flex flex-col items-center gap-1.5 rounded-2xl border border-line p-3 text-center text-xs font-medium">
-              <item.icon className="size-6 text-brand-600" />
+            <NavLink key={item.to} to={item.to} className="pressable flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line p-3 text-center text-xs font-medium">
+              <item.icon className="size-7 text-brand-600" />
               {t(`nav.${item.key}`)}
             </NavLink>
           ))}
         </div>
       </Modal>
+
+      {/* What the round button opens: the four things a day is made of. */}
+      <Modal open={actionsOpen} onClose={() => setActionsOpen(false)} title={t('nav.start')}>
+        <div className="grid grid-cols-2 gap-2.5">
+          {[
+            { key: 'note', icon: PenLine, run: () => setNoteOpen(true) },
+            { key: 'business', icon: Store, run: () => setAddOpen(true) },
+            { key: 'task', icon: CalendarPlus, run: () => setTaskOpen(true) },
+            { key: 'call', icon: Phone, to: '/calls' },
+          ].map((action) => {
+            const inside = (
+              <>
+                <action.icon className="size-7 text-brand-600" />
+                <span className="text-sm font-medium">{t(`start.${action.key}`)}</span>
+              </>
+            )
+            const className = 'pressable flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-4 text-center'
+            return action.to ? (
+              <NavLink key={action.key} to={action.to} className={className} onClick={() => setActionsOpen(false)}>{inside}</NavLink>
+            ) : (
+              <button key={action.key} type="button" className={className} onClick={() => { setActionsOpen(false); action.run?.() }}>{inside}</button>
+            )
+          })}
+        </div>
+      </Modal>
+      <TaskDialog open={taskOpen} onClose={() => setTaskOpen(false)} />
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <QuickAddDialog open={addOpen} onClose={() => setAddOpen(false)} />

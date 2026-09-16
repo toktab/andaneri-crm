@@ -85,10 +85,10 @@ export function BusinessesPage() {
         subtitle={list.data ? t('businesses.count', { n: list.data.total }) : undefined}
         actions={
           <>
-            <button type="button" className="btn-secondary" disabled={exporting} onClick={() => void exportList('xlsx')}>
+            <button type="button" className="btn-secondary hidden md:inline-flex" disabled={exporting} onClick={() => void exportList('xlsx')}>
               <Download className="size-4" /> {t('businesses.exportXlsx')}
             </button>
-            <button type="button" className="btn-secondary" disabled={exporting} onClick={() => void exportList('json')}>
+            <button type="button" className="btn-secondary hidden md:inline-flex" disabled={exporting} onClick={() => void exportList('json')}>
               <Download className="size-4" /> {t('businesses.exportJson')}
             </button>
             {canEdit() && (
@@ -123,7 +123,7 @@ export function BusinessesPage() {
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className={`mt-3 flex-wrap gap-1.5 ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
           {STATUSES.map((status) => (
             <button key={status} type="button" onClick={() => toggleStatus(status)} className={`chip ${statuses.includes(status) ? `${STATUS_STYLE[status].badge} border-transparent ring-2 ring-brand-400` : 'border-line bg-surface text-muted hover:text-ink'}`}>
               <span className={`size-1.5 rounded-full ${STATUS_STYLE[status].dot}`} /> {t(`status.${status}`)}
