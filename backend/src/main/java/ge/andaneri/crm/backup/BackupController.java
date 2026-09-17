@@ -38,11 +38,13 @@ public class BackupController {
 
     private final BackupService backups;
     private final BackupConverter converter;
+    private final RestoreService restore;
     private final CurrentUser currentUser;
 
-    public BackupController(BackupService backups, BackupConverter converter, CurrentUser currentUser) {
+    public BackupController(BackupService backups, BackupConverter converter, RestoreService restore, CurrentUser currentUser) {
         this.backups = backups;
         this.converter = converter;
+        this.restore = restore;
         this.currentUser = currentUser;
     }
 
@@ -77,6 +79,19 @@ public class BackupController {
         User user = currentUser.requireAdmin();
         backups.delete(id, user, ClientIp.of(request), ClientIp.userAgent(request));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Puts a backup back into this install: the team, the catalog, the projects, the settings, the notes
+     * and every business with its whole history. Refuses a database that already holds businesses unless
+     * {@code force} says otherwise, and {@code dryRun} only reports what a restore would bring.
+     */
+    @PostMapping("/restore")
+    public RestoreService.RestoreResult restore(@RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "false") boolean force,
+            @RequestParam(defaultValue = "false") boolean dryRun) throws IOException {
+        User user = currentUser.requireAdmin();
+        return restore.restore(file.getBytes(), force, dryRun, user);
     }
 
     @PostMapping("/convert")

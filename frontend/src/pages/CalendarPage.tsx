@@ -3,7 +3,7 @@ import {
   addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns'
 import { enUS, ka as kaLocale } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Eraser, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eraser, MapPin, Navigation, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
 import { useLookups, useRefreshWork, useTasks } from '../lib/queries'
@@ -14,7 +14,10 @@ import { useI18n } from '../i18n'
 import { Choice, EmptyState, PageHeader } from '../components/ui'
 import { TaskRow, TYPE_TONE } from '../components/TaskRow'
 import { TaskDialog } from '../components/TaskDialog'
+import { RouteBriefing } from '../components/RouteBriefing'
 import { useToast } from '../components/Toast'
+import { tap } from '../lib/mobile'
+import { mapsHref } from '../lib/format'
 
 type View = 'month' | 'week' | 'day' | 'agenda'
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 8) // 08:00 to 22:00
@@ -32,6 +35,15 @@ export function CalendarPage() {
   const [cursor, setCursor] = useState(() => startOfDay(new Date()))
   const [who, setWho] = useState('me')
   const [open, setOpen] = useState<TaskDto | null>(null)
+  const [briefing, setBriefing] = useState<TaskDto | null>(null)
+  // Out on the road: a stop opens as a briefing to read at the door, not as a form to fill in.
+  const [route, setRoute] = useState(() => {
+    try {
+      return localStorage.getItem('andaneri.route') === '1'
+    } catch {
+      return false
+    }
+  })
   const [creating, setCreating] = useState<string | null>(null)
   const editable = canEdit()
   const userId = who === 'me' ? user?.id ?? null : who === 'all' ? null : Number(who)
@@ -46,6 +58,28 @@ export function CalendarPage() {
   const tasks = useTasks({ from: range.from.toISOString(), to: startOfDay(range.to).toISOString(), userId, status: ['OPEN', 'DONE'] })
   const hasImported = (tasks.data ?? []).some((task) => task.imported && task.status === 'OPEN')
   const onDay = (day: Date) => (tasks.data ?? []).filter((task) => isSameDay(new Date(task.dueAt), day))
+
+  const toggleRoute = () => {
+    const next = !route
+    tap()
+    setRoute(next)
+    if (next) {
+      setView('agenda')
+      setCursor(startOfDay(new Date()))
+    }
+    try {
+      localStorage.setItem('andaneri.route', next ? '1' : '0')
+    } catch {
+      /* this visit only */
+    }
+  }
+
+  /** In route mode a stop opens as a briefing; otherwise it opens for editing. */
+  const openTask = (task: TaskDto) => (route ? setBriefing(task) : setOpen(task))
+
+  const stops = (tasks.data ?? [])
+    .filter((task) => task.status === 'OPEN' && isSameDay(new Date(task.dueAt), new Date()))
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
 
   const step = (direction: 1 | -1) => {
     if (view === 'month') setCursor((c) => addMonths(c, direction))
@@ -98,6 +132,14 @@ export function CalendarPage() {
               <option value="all">{t('calendar.everyone')}</option>
               {lookups.data?.users.filter((u) => u.active && u.id !== user?.id).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
             </select>
+            <button
+              type="button"
+              className={route ? 'btn-primary' : 'btn-secondary'}
+              onClick={toggleRoute}
+              title={t('route.hint')}
+            >
+              <Navigation className="size-4" /> {t('route.mode')}
+            </button>
             {editable && <button type="button" className="btn-primary" onClick={() => newAt(cursor)}><Plus className="size-4" /> {t('calendar.newEvent')}</button>}
           </>
         }
@@ -112,6 +154,42 @@ export function CalendarPage() {
           <Choice size="sm" value={view} onChange={setView} options={(['month', 'week', 'day', 'agenda'] as View[]).map((v) => ({ value: v, label: t(`calendar.${v}`) }))} />
         </div>
       </div>
+
+      {route && (
+        <section className="card mb-3 border-brand-200 p-3">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            <Navigation className="size-4 text-brand-600" /> {t('route.today', { n: stops.length })}
+          </h2>
+          {stops.length === 0 ? (
+            <p className="px-1 text-sm text-muted">{t('dashboard.nothingToday')}</p>
+          ) : (
+            <ol className="space-y-1.5">
+              {stops.map((task, i) => {
+                const where = task.businessAddress
+                  ? mapsHref({ mapsUrl: task.businessMapsUrl, address: task.businessAddress, name: task.businessName ?? undefined })
+                  : null
+                return (
+                  <li key={task.id} className="flex items-center gap-2">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">{i + 1}</span>
+                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setBriefing(task)}>
+                      <span className="block truncate text-sm font-medium">{task.businessName ?? task.title}</span>
+                      <span className="block truncate text-xs text-muted">
+                        {task.allDay ? '' : `${fmtTime(task.dueAt)} · `}{t(`taskType.${task.type}`)}
+                        {task.businessAddress ? ` · ${task.businessAddress}` : ''}
+                      </span>
+                    </button>
+                    {where && (
+                      <a href={where} target="_blank" rel="noreferrer" className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-brand-700" title={t('business.openMaps')}>
+                        <MapPin className="size-4" />
+                      </a>
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </section>
+      )}
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {(['CALL', 'MEETING', 'VISIT', 'DELIVERY', 'FOLLOW_UP'] as TaskType[]).map((type) => (
@@ -147,7 +225,7 @@ export function CalendarPage() {
                   </div>
                   <div className="mt-1 space-y-0.5">
                     {items.slice(0, 3).map((task) => (
-                      <button key={task.id} type="button" onClick={() => setOpen(task)} title={`${t(`taskType.${task.type}`)}: ${task.businessName ?? task.title ?? ''}`}
+                      <button key={task.id} type="button" onClick={() => openTask(task)} title={`${t(`taskType.${task.type}`)}: ${task.businessName ?? task.title ?? ''}`}
                         className={`block w-full truncate rounded px-1 py-0.5 text-left text-[11px] ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''} ${task.imported ? 'opacity-50 italic' : ''}`}>
                         <span className="font-semibold">{task.allDay ? '' : fmtTime(task.dueAt)} {t(`taskType.${task.type}`)}</span> · {task.businessName ?? task.title}
                       </button>
@@ -173,7 +251,7 @@ export function CalendarPage() {
               </div>
               <div className="space-y-1">
                 {onDay(day).map((task) => (
-                  <button key={task.id} type="button" onClick={() => setOpen(task)}
+                  <button key={task.id} type="button" onClick={() => openTask(task)}
                     className={`block w-full rounded-lg px-2 py-1 text-left text-xs ${TYPE_TONE[task.type]} ${task.status !== 'OPEN' ? 'line-through opacity-60' : ''} ${task.imported ? 'opacity-50 italic' : ''}`}>
                     <span className="block font-semibold">{task.allDay ? '-' : fmtTime(task.dueAt)} · {t(`taskType.${task.type}`)}{task.imported ? ` · ${t('tasks.imported')}` : ''}</span>
                     <span className="block truncate">{task.businessName ?? task.title}</span>
@@ -187,14 +265,14 @@ export function CalendarPage() {
 
       {view === 'day' && (
         <div className="card divide-y divide-line">
-          {onDay(cursor).filter((task) => task.allDay).map((task) => <TaskRow key={task.id} task={task} onOpen={setOpen} onComplete={complete} editable={editable} />)}
+          {onDay(cursor).filter((task) => task.allDay).map((task) => <TaskRow key={task.id} task={task} onOpen={openTask} onComplete={complete} editable={editable} />)}
           {HOURS.map((hour) => {
             const items = onDay(cursor).filter((task) => !task.allDay && new Date(task.dueAt).getHours() === hour)
             return (
               <div key={hour} className="group flex min-h-12 gap-2 px-2 py-1">
                 <div className="w-12 shrink-0 pt-2 text-xs font-medium text-muted tabular-nums">{String(hour).padStart(2, '0')}:00</div>
                 <div className="flex-1">
-                  {items.map((task) => <TaskRow key={task.id} task={task} onOpen={setOpen} onComplete={complete} editable={editable} />)}
+                  {items.map((task) => <TaskRow key={task.id} task={task} onOpen={openTask} onComplete={complete} editable={editable} />)}
                 </div>
                 {editable && (
                   <button type="button" className="invisible self-center rounded-lg p-1.5 text-muted hover:bg-brand-50 hover:text-brand-700 group-hover:visible" onClick={() => newAt(cursor, hour)} aria-label={t('calendar.newEvent')}>
@@ -205,7 +283,7 @@ export function CalendarPage() {
             )
           })}
           {onDay(cursor).filter((task) => !task.allDay && (new Date(task.dueAt).getHours() < 8 || new Date(task.dueAt).getHours() > 22)).map((task) => (
-            <TaskRow key={task.id} task={task} onOpen={setOpen} onComplete={complete} editable={editable} />
+            <TaskRow key={task.id} task={task} onOpen={openTask} onComplete={complete} editable={editable} />
           ))}
         </div>
       )}
@@ -216,13 +294,14 @@ export function CalendarPage() {
             {eachDay(range.from, range.to).filter((day) => onDay(day).length > 0).map((day) => (
               <section key={day.toISOString()} className="card p-2">
                 <div className="px-2 pb-1 pt-1.5 text-xs font-medium uppercase tracking-wide text-muted">{format(day, 'EEEE, d MMM', { locale })}</div>
-                {onDay(day).map((task) => <TaskRow key={task.id} task={task} onOpen={setOpen} onComplete={complete} editable={editable} />)}
+                {onDay(day).map((task) => <TaskRow key={task.id} task={task} onOpen={openTask} onComplete={complete} editable={editable} />)}
               </section>
             ))}
           </div>
         )
       )}
 
+      <RouteBriefing task={briefing} onClose={() => setBriefing(null)} />
       <TaskDialog open={Boolean(open)} task={open} onClose={() => setOpen(null)} />
       <TaskDialog open={Boolean(creating)} defaultDueAt={creating} defaultType="MEETING" onClose={() => setCreating(null)} />
     </div>

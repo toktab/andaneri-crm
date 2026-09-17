@@ -77,7 +77,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class JsonTransferService {
 
     public static final String FORMAT = "andaneri-crm";
-    public static final int VERSION = 1;
+    /** 2: activities carry every result and their own comments; tasks carry how they ended; stages carry their history. */
+    public static final int VERSION = 2;
 
     public record JsonFile(String format, Integer version, Instant exportedAt, List<JsonBusiness> businesses) {
     }
@@ -92,7 +93,15 @@ public class JsonTransferService {
             /** Where it is filed: project and sheet names. */
             String project, String sheet,
             /** Custom field label to value. */
-            Map<String, String> customFields) {
+            Map<String, String> customFields,
+            // --- version 2 ---
+            Boolean archived, BigDecimal latitude, BigDecimal longitude, String createdBy, Instant lastContactAt,
+            /** How it moved through the stages, oldest first. */
+            List<JsonStatusChange> statusHistory) {
+    }
+
+    /** One step through the pipeline: who moved it, when, and from what to what. */
+    public record JsonStatusChange(String from, String to, Instant at, String user, String note) {
     }
 
     public record JsonContact(String name, String roleTitle, String phone, String email, String preferredChannel,
@@ -110,11 +119,22 @@ public class JsonTransferService {
     }
 
     public record JsonActivity(String type, String result, Instant occurredAt, String notes, String user, String contact,
-            Boolean imported) {
+            Boolean imported,
+            // --- version 2 ---
+            /** Everything that happened at once; the first is {@code result}. */
+            List<String> results, String resultNote,
+            /** What was added under this entry afterwards. */
+            List<JsonComment> comments) {
     }
 
     public record JsonTask(String type, String title, Instant dueAt, Instant endAt, Boolean allDay, String location,
-            String priority, String status, String notes, String assignedTo) {
+            String priority, String status, String notes, String assignedTo,
+            // --- version 2 ---
+            String contact, List<String> flavors, Integer remindMinutes, Boolean imported,
+            /** How it ended: when it was ticked off or cancelled, and by whom. */
+            Instant completedAt, String completedBy, Instant createdAt, String createdBy,
+            /** Which entry of this business's {@code activities} completed it, by position. */
+            Integer activityIndex) {
     }
 
     public record JsonComment(String body, String author, Instant createdAt) {
@@ -197,6 +217,25 @@ public class JsonTransferService {
         List<JsonBusiness> out = new ArrayList<>();
         for (Business b : rows) {
             Long id = b.getId();
+
+            // Entries first: tasks point at them by position, and comments hang under them.
+            List<Activity> rowActivities = activities.findForBusiness(id).stream()
+                    .sorted(Comparator.comparing(Activity::getOccurredAt).thenComparing(Activity::getId)).toList();
+            Map<Long, Integer> positionOf = new HashMap<>();
+            for (int i = 0; i < rowActivities.size(); i++) {
+                positionOf.put(rowActivities.get(i).getId(), i);
+            }
+            Map<Long, List<JsonComment>> underActivity = new HashMap<>();
+            List<JsonComment> loose = new ArrayList<>();
+            for (Comment c : comments.findForBusiness(id).stream().sorted(Comparator.comparing(Comment::getCreatedAt)).toList()) {
+                JsonComment out2 = new JsonComment(c.getBody(), c.getAuthor().getUsername(), c.getCreatedAt());
+                if (c.getActivity() == null) {
+                    loose.add(out2);
+                } else {
+                    underActivity.computeIfAbsent(c.getActivity().getId(), key -> new ArrayList<>()).add(out2);
+                }
+            }
+
             out.add(new JsonBusiness(b.getName(), b.getLegalName(), b.getType() == null ? null : b.getType().getNameEn(),
                     b.getStatus().name(), b.getPriority().name(), b.getAddress(), b.getCity(), b.getDistrict(), b.getPhone(),
                     b.getEmail(), b.getWebsite(), b.getMapsUrl(), b.getIdCode(), b.getBranches(), b.getVisitHours(), b.getNotes(),
@@ -216,18 +255,23 @@ public class JsonTransferService {
                             .map(i -> new JsonInterest(i.getFlavor() == null ? null : i.getFlavor().getNameEn(),
                                     i.getProduct() == null ? null : i.getProduct().getNameEn(), i.getStatus().name(),
                                     i.getReason().name(), i.getFeedback().name(), i.getNotes())).toList(),
-                    activities.findForBusiness(id).stream()
-                            .sorted(Comparator.comparing(Activity::getOccurredAt))
+                    rowActivities.stream()
                             .map(a -> new JsonActivity(a.getType().name(), a.getResult().name(), a.getOccurredAt(), a.getNotes(),
-                                    a.getUser().getUsername(), a.getContact() == null ? null : a.getContact().getName(), a.isImported()))
+                                    a.getUser().getUsername(), a.getContact() == null ? null : a.getContact().getName(), a.isImported(),
+                                    ge.andaneri.crm.web.WorkDtos.ActivityDto.of(a).results().stream().map(Enum::name).toList(), a.getResultNote(),
+                                    underActivity.getOrDefault(a.getId(), List.of())))
                             .toList(),
                     tasks.findForBusiness(id).stream()
                             .map(t -> new JsonTask(t.getType().name(), t.getTitle(), t.getDueAt(), t.getEndAt(), t.isAllDay(),
                                     t.getLocation(), t.getPriority().name(), t.getStatus().name(), t.getNotes(),
-                                    t.getAssignedTo().getUsername())).toList(),
-                    comments.findForBusiness(id).stream()
-                            .sorted(Comparator.comparing(Comment::getCreatedAt))
-                            .map(c -> new JsonComment(c.getBody(), c.getAuthor().getUsername(), c.getCreatedAt())).toList(),
+                                    t.getAssignedTo().getUsername(),
+                                    t.getContact() == null ? null : t.getContact().getName(),
+                                    t.getFlavors().stream().map(Flavor::getNameEn).sorted().toList(),
+                                    t.getRemindMinutes(), t.isImported(), t.getCompletedAt(),
+                                    t.getCompletedBy() == null ? null : t.getCompletedBy().getUsername(),
+                                    t.getCreatedAt(), t.getCreatedBy() == null ? null : t.getCreatedBy().getUsername(),
+                                    t.getActivity() == null ? null : positionOf.get(t.getActivity().getId()))).toList(),
+                    loose,
                     purchases.findForBusiness(id).stream()
                             .sorted(Comparator.comparing(Purchase::getPurchaseDate))
                             .map(p -> new JsonPurchase(p.getPurchaseDate(), p.getNotes(), p.getUser().getUsername(),
@@ -236,7 +280,15 @@ public class JsonTransferService {
                             .toList(),
                     b.getSheet() == null || b.getSheet().getWorkbook() == null ? null : b.getSheet().getWorkbook().getName(),
                     b.getSheet() == null ? null : b.getSheet().getName(),
-                    customByLabel(id)));
+                    customByLabel(id),
+                    b.isArchived(), b.getLatitude(), b.getLongitude(),
+                    b.getCreatedBy() == null ? null : b.getCreatedBy().getUsername(), b.getLastContactAt(),
+                    statusChanges.findForBusiness(id).stream()
+                            .sorted(Comparator.comparing(StatusChange::getChangedAt))
+                            .map(c -> new JsonStatusChange(c.getFromStatus() == null ? null : c.getFromStatus().name(),
+                                    c.getToStatus().name(), c.getChangedAt(),
+                                    c.getUser() == null ? null : c.getUser().getUsername(), c.getNote()))
+                            .toList()));
         }
         return new JsonFile(FORMAT, VERSION, Instant.now(), out);
     }
@@ -327,15 +379,20 @@ public class JsonTransferService {
         }
         User named = lookup.user(jb.assignedTo());
         b.setAssignedTo(user.isSupervisor() ? named : user);
-        b.setCreatedBy(user);
+        b.setCreatedBy(Objects.requireNonNullElse(lookup.user(jb.createdBy()), user));
         b.setCreatedAt(jb.createdAt() == null ? now : jb.createdAt());
+        b.setArchived(Boolean.TRUE.equals(jb.archived()));
+        b.setLatitude(jb.latitude());
+        b.setLongitude(jb.longitude());
         b.setUpdatedAt(now);
         if (jb.sheet() != null && !jb.sheet().isBlank()) {
             var project = jb.project() == null || jb.project().isBlank() ? null : workspace.workbook(jb.project(), null, user);
             b.setSheet(workspace.sheet(jb.sheet(), project, user));
         }
         Business saved = businesses.save(b);
-        statusChanges.save(new StatusChange(saved, null, saved.getStatus(), user, "JSON"));
+        if (list(jb.statusHistory()).isEmpty()) {
+            statusChanges.save(new StatusChange(saved, null, saved.getStatus(), user, "JSON"));
+        }
         if (jb.customFields() != null) {
             jb.customFields().forEach((label, value) -> {
                 if (label != null && !label.isBlank() && value != null && !value.isBlank()) {
@@ -401,22 +458,44 @@ public class JsonTransferService {
             interests.save(interest);
         }
         Instant lastContact = null;
+        // Kept in the file's order: a task says which entry finished it by position.
+        List<Activity> restored = new ArrayList<>();
         for (JsonActivity ja : list(jb.activities())) {
             Activity activity = new Activity();
             activity.setBusiness(saved);
             activity.setUser(Objects.requireNonNullElse(lookup.user(ja.user()), user));
             activity.setType(parse(ActivityType.class, ja.type(), ActivityType.OTHER));
             activity.setResult(parse(ActivityResult.class, ja.result(), ActivityResult.OTHER));
+            for (String extra : list(ja.results())) {
+                ActivityResult result = parse(ActivityResult.class, extra, null);
+                if (result != null && result != activity.getResult()) {
+                    activity.getResults().add(result);
+                }
+            }
+            activity.setResultNote(Text.blankToNull(ja.resultNote()));
             activity.setOccurredAt(ja.occurredAt() == null ? now : ja.occurredAt());
             activity.setNotes(ja.notes());
             activity.setContact(ja.contact() == null ? null : contactByName.get(ja.contact()));
             activity.setImported(Boolean.TRUE.equals(ja.imported()));
             activities.save(activity);
+            restored.add(activity);
+            for (JsonComment jc : list(ja.comments())) {
+                if (Text.blankToNull(jc.body()) == null) {
+                    continue;
+                }
+                Comment comment = new Comment();
+                comment.setBusiness(saved);
+                comment.setActivity(activity);
+                comment.setAuthor(Objects.requireNonNullElse(lookup.user(jc.author()), user));
+                comment.setBody(jc.body());
+                comment.setCreatedAt(jc.createdAt() == null ? now : jc.createdAt());
+                comments.save(comment);
+            }
             if (lastContact == null || activity.getOccurredAt().isAfter(lastContact)) {
                 lastContact = activity.getOccurredAt();
             }
         }
-        saved.setLastContactAt(lastContact);
+        saved.setLastContactAt(jb.lastContactAt() != null ? jb.lastContactAt() : lastContact);
         for (JsonTask jt : list(jb.tasks())) {
             if (jt.dueAt() == null) {
                 continue;
@@ -434,10 +513,23 @@ public class JsonTransferService {
             task.setNotes(jt.notes());
             User assignee = lookup.user(jt.assignedTo());
             task.setAssignedTo(assignee != null && user.isSupervisor() ? assignee : saved.getAssignedTo() != null ? saved.getAssignedTo() : user);
-            task.setCreatedBy(user);
+            task.setCreatedBy(Objects.requireNonNullElse(lookup.user(jt.createdBy()), user));
+            task.setContact(jt.contact() == null ? null : contactByName.get(jt.contact()));
+            task.setRemindMinutes(jt.remindMinutes());
+            task.setImported(Boolean.TRUE.equals(jt.imported()));
+            for (String flavorName : list(jt.flavors())) {
+                Flavor flavor = lookup.flavor(flavorName);
+                if (flavor != null) {
+                    task.getFlavors().add(flavor);
+                }
+            }
+            // A task written down as done or cancelled keeps saying so, and by whom.
             if (task.getStatus() != TaskStatus.OPEN) {
-                task.setCompletedAt(jt.dueAt());
-                task.setCompletedBy(task.getAssignedTo());
+                task.setCompletedAt(jt.completedAt() != null ? jt.completedAt() : jt.dueAt());
+                task.setCompletedBy(Objects.requireNonNullElse(lookup.user(jt.completedBy()), task.getAssignedTo()));
+            }
+            if (jt.activityIndex() != null && jt.activityIndex() >= 0 && jt.activityIndex() < restored.size()) {
+                task.setActivity(restored.get(jt.activityIndex()));
             }
             tasks.save(task);
         }
@@ -452,6 +544,17 @@ public class JsonTransferService {
             comment.setCreatedAt(jc.createdAt() == null ? now : jc.createdAt());
             comments.save(comment);
         }
+        for (JsonStatusChange js : list(jb.statusHistory())) {
+            BusinessStatus to = parse(BusinessStatus.class, js.to(), null);
+            if (to == null) {
+                continue;
+            }
+            StatusChange change = new StatusChange(saved, parse(BusinessStatus.class, js.from(), null), to,
+                    Objects.requireNonNullElse(lookup.user(js.user()), user), js.note());
+            change.setChangedAt(js.at() == null ? now : js.at());
+            statusChanges.save(change);
+        }
+
         LocalDate lastPurchase = null;
         int orders = 0;
         for (JsonPurchase jp : list(jb.purchases())) {
@@ -544,7 +647,8 @@ public class JsonTransferService {
         }
     }
 
-    static <E extends Enum<E>> E parse(Class<E> type, String value, E fallback) {
+    /** An enum by name, however it was cased, falling back when the file says something unknown. */
+    public static <E extends Enum<E>> E parse(Class<E> type, String value, E fallback) {
         if (value == null) {
             return fallback;
         }

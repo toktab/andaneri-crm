@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileSpreadsheet, Plus, Trash, Upload } from 'lucide-react'
-import { api } from '../lib/api'
+import { Download, FileSpreadsheet, Plus, RotateCcw, Trash, Upload } from 'lucide-react'
+import { api, ApiError } from '../lib/api'
 import { keys, useLookups } from '../lib/queries'
 import { fmtDateTime } from '../lib/format'
 import type { AuditDto, CustomField, Role, TypeDto, UserDto } from '../lib/types'
@@ -20,6 +20,10 @@ interface BackupInfo {
 }
 interface BackupStatus { lastBackupAt: string | null; nextDueAt: string; due: boolean; reminder: boolean; intervalDays: number; retentionDays: number }
 interface BackupOverview { status: BackupStatus; backups: BackupInfo[]; log: BackupEvent[] }
+interface RestoreResult {
+  dryRun: boolean; users: number; usersNeedingPassword: string[]; projects: number; sheets: number; customFields: number
+  brands: number; flavors: number; products: number; businesses: number; notes: number; settings: number
+}
 const ROLES: Role[] = ['SALES', 'SUPERVISOR', 'ADMIN']
 
 export function AdminPage() {
@@ -271,6 +275,7 @@ function BackupsTab() {
   const toast = useToast()
   const queryClient = useQueryClient()
   const overview = useQuery({ queryKey: ['backups'], queryFn: () => api.get<BackupOverview>('/admin/backups') })
+  const [restored, setRestored] = useState<RestoreResult | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [open, setOpen] = useState<number | null>(null)
 
@@ -299,6 +304,28 @@ function BackupsTab() {
   const convert = (file: File | undefined) => {
     if (!file) return
     void run('convert', () => api.convert('/admin/backups/convert', file, { lang }, 'andaneri-backup.xlsx'))
+  }
+
+  // Putting a backup back. The server refuses a database that still holds businesses unless it is told
+  // twice, so the usual path - a fresh server - needs no warning, and the other one is asked about.
+  const restore = (file: File | undefined, force = false) => {
+    if (!file) return
+    void run('restore', async () => {
+      try {
+        const result = await api.upload<RestoreResult>('/admin/backups/restore', file, force ? { force: true } : undefined)
+        setRestored(result)
+        toast.ok(t('admin.restoreDone', { n: result.businesses }))
+      } catch (error) {
+        if (!force && error instanceof ApiError && error.code === 'NOT_EMPTY') {
+          if (window.confirm(t('admin.restoreNotEmpty'))) {
+            restore(file, true)
+            return
+          }
+          return
+        }
+        throw error
+      }
+    })
   }
 
   if (overview.isLoading) return <Loading />
@@ -375,6 +402,25 @@ function BackupsTab() {
           {busy === 'convert' ? <Spinner className="size-4" /> : <Upload className="size-4" />} {t('admin.convertButton')}
           <input type="file" accept=".zip,.json,application/zip,application/json" className="hidden" onChange={(e) => { convert(e.target.files?.[0]); e.target.value = '' }} />
         </label>
+      </section>
+
+      <section className="card border-amber-200 p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><RotateCcw className="size-4 text-amber-600" /> {t('admin.restoreTitle')}</h3>
+        <p className="mb-3 mt-1 text-sm text-muted">{t('admin.restoreHint')}</p>
+        <label className="btn-secondary cursor-pointer">
+          {busy === 'restore' ? <Spinner className="size-4" /> : <Upload className="size-4" />} {t('admin.restoreButton')}
+          <input type="file" accept=".zip,.json,application/zip,application/json" className="hidden" onChange={(e) => { restore(e.target.files?.[0]); e.target.value = '' }} />
+        </label>
+        {restored && (
+          <div className="mt-3 rounded-xl border border-line bg-canvas p-3 text-sm">
+            <p>{t('admin.restoreResult', { n: restored.businesses, p: restored.projects, f: restored.customFields, o: restored.notes })}</p>
+            {restored.usersNeedingPassword.length > 0 && (
+              <p className="mt-1 text-amber-800">
+                {t('admin.restoreUsers', { names: restored.usersNeedingPassword.join(', ') })}
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="card p-3">

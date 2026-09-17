@@ -59,6 +59,8 @@ public class StatusChange {
     public BusinessStatus getToStatus() { return toStatus; }
     public User getUser() { return user; }
     public Instant getChangedAt() { return changedAt; }
+
+    /** Set when restoring a backup, so the history keeps the time the step actually happened. */
     public void setChangedAt(Instant changedAt) { this.changedAt = changedAt; }
     public String getNote() { return note; }
 }
