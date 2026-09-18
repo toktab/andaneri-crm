@@ -3,7 +3,15 @@
 
 import { api } from './api'
 
-export interface PushStatus { publicKey: string; devices: number; reminderMinutes: number }
+/** One device that has notifications switched on, and how the last push to it went. */
+export interface DeviceInfo {
+  id: number; name: string; thisDevice: boolean; addedAt: string; lastSuccessAt: string | null
+  lastStatus: number | null; lastError: string | null
+}
+export interface PushStatus { publicKey: string; devices: number; reminderMinutes: number; deviceList: DeviceInfo[] }
+/** What one device answered to a test push. */
+export interface Delivery { deviceId: number; device: string; accepted: boolean; status: number | null; error: string | null }
+export interface TestResult { sent: number; devices: Delivery[] }
 
 const FLAG = 'andaneri.push'
 
@@ -54,6 +62,9 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
  */
 export async function enablePush(lang: string): Promise<PushStatus> {
   const permission = await Notification.requestPermission()
+  // 'default' means the browser never asked - Chrome hides the prompt once it has been dismissed a few
+  // times, and Android is where that happens most. It needs its own words, not "you refused".
+  if (permission === 'default') throw new Error('NOT_ASKED')
   if (permission !== 'granted') throw new Error('DENIED')
   const status = await api.get<PushStatus>('/push/status')
   const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })

@@ -49,6 +49,14 @@ public class PushSubscription {
 
     private Instant lastSuccessAt;
 
+    /** What the push service answered last time, so a silent phone can say why. */
+    private Integer lastStatus;
+
+    @Column(length = 200)
+    private String lastError;
+
+    private Instant lastTriedAt;
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
@@ -67,4 +75,10 @@ public class PushSubscription {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastSuccessAt() { return lastSuccessAt; }
     public void setLastSuccessAt(Instant lastSuccessAt) { this.lastSuccessAt = lastSuccessAt; }
+    public Integer getLastStatus() { return lastStatus; }
+    public void setLastStatus(Integer lastStatus) { this.lastStatus = lastStatus; }
+    public String getLastError() { return lastError; }
+    public void setLastError(String lastError) { this.lastError = lastError; }
+    public Instant getLastTriedAt() { return lastTriedAt; }
+    public void setLastTriedAt(Instant lastTriedAt) { this.lastTriedAt = lastTriedAt; }
 }

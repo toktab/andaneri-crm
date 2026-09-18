@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellOff, BellRing, CalendarPlus, Copy, RefreshCw, Send, Share, Smartphone, SquarePlus } from 'lucide-react'
+import { BellOff, BellRing, CalendarPlus, CircleAlert, CircleCheck, Copy, RefreshCw, Send, Share, Smartphone, SquarePlus } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import { disablePush, enablePush, isAndroid, isIos, isStandalone, pushOnHere, pushSupported, type PushStatus } from '../lib/push'
+import { currentSubscription, disablePush, enablePush, isAndroid, isIos, isStandalone, pushOnHere, pushSupported,
+  type Delivery, type PushStatus, type TestResult } from '../lib/push'
+import { fmtDateTime } from '../lib/format'
 import { useI18n } from '../i18n'
 import { Modal, Spinner } from './ui'
 import { useToast } from './Toast'
@@ -17,10 +19,21 @@ export function RemindersDialog({ open, onClose }: { open: boolean; onClose: () 
   const { t, lang } = useI18n()
   const toast = useToast()
   const client = useQueryClient()
-  const status = useQuery({ queryKey: ['push-status'], queryFn: () => api.get<PushStatus>('/push/status'), enabled: open })
+  // The address of this very device, so the list can mark which line is the phone in your hand.
+  const mine = useQuery({
+    queryKey: ['push-endpoint'],
+    queryFn: async () => (await currentSubscription())?.endpoint ?? '',
+    enabled: open,
+  })
+  const status = useQuery({
+    queryKey: ['push-status', mine.data ?? ''],
+    queryFn: () => api.get<PushStatus>('/push/status', mine.data ? { endpoint: mine.data } : undefined),
+    enabled: open && mine.isFetched,
+  })
   const feed = useQuery({ queryKey: ['calendar-feed'], queryFn: () => api.get<{ token: string | null }>('/me/calendar'), enabled: open })
   const [here, setHere] = useState(pushOnHere)
   const [busy, setBusy] = useState<string | null>(null)
+  const [tested, setTested] = useState<Delivery[] | null>(null)
 
   const supported = pushSupported()
   const needsInstall = isIos() && !isStandalone()
@@ -31,7 +44,10 @@ export function RemindersDialog({ open, onClose }: { open: boolean; onClose: () 
     try {
       await action()
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'DENIED' ? new ApiError(0, { code: 'PUSH_DENIED' }) : error)
+      const code = error instanceof Error && (error.message === 'DENIED' || error.message === 'NOT_ASKED')
+        ? (error.message === 'NOT_ASKED' ? 'PUSH_NOT_ASKED' : 'PUSH_DENIED')
+        : null
+      toast.error(code ? new ApiError(0, { code }) : error)
     } finally {
       setBusy(null)
     }
@@ -50,9 +66,13 @@ export function RemindersDialog({ open, onClose }: { open: boolean; onClose: () 
   })
 
   const sendTest = () => run('test', async () => {
-    const result = await api.post<{ sent: number }>('/push/test')
+    const result = await api.post<TestResult>('/push/test')
+    setTested(result.devices)
+    await client.invalidateQueries({ queryKey: ['push-status'] })
     if (result.sent > 0) toast.ok(t('notify.testSent', { n: result.sent }))
-    else toast.error(new ApiError(0, { code: 'NO_DEVICES' }))
+    else if (result.devices.length === 0) toast.error(new ApiError(0, { code: 'NO_DEVICES' }))
+    // Refused by the push service: the reason is on the screen now, not only in the server log.
+    else toast.error(new ApiError(0, { code: 'PUSH_REFUSED' }))
   })
 
   const setMinutes = (minutes: number) => run('minutes', async () => {
@@ -125,6 +145,34 @@ export function RemindersDialog({ open, onClose }: { open: boolean; onClose: () 
               {denied && <p className="w-full text-sm text-rose-700">{t('notify.deniedHelp')}</p>}
               {/* Android phones shut background work down to save battery; this is where that is undone. */}
               {here && isAndroid() && <p className="w-full rounded-xl bg-canvas p-2.5 text-xs text-muted">{t('notify.androidHint')}</p>}
+
+              {/* Which devices are switched on, and what the push service last answered to each. */}
+              {(status.data?.deviceList ?? []).length > 0 && (
+                <ul className="w-full space-y-1.5 border-t border-line pt-2.5">
+                  {(status.data?.deviceList ?? []).map((device) => {
+                    const result = tested?.find((x) => x.deviceId === device.id)
+                    const failed = result ? !result.accepted : Boolean(device.lastError)
+                    return (
+                      <li key={device.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                        {failed
+                          ? <CircleAlert className="size-4 shrink-0 text-rose-600" />
+                          : <CircleCheck className={`size-4 shrink-0 ${result || device.lastSuccessAt ? 'text-emerald-600' : 'text-muted'}`} />}
+                        <span className="font-medium">{device.name}</span>
+                        {device.thisDevice && <span className="chip border-brand-200 bg-brand-50 text-brand-800">{t('notify.thisDevice')}</span>}
+                        {device.lastSuccessAt && !failed && (
+                          <span className="text-muted">{t('notify.lastDelivered', { at: fmtDateTime(device.lastSuccessAt, lang) })}</span>
+                        )}
+                        {failed && (
+                          <span className="w-full text-rose-700">
+                            {t('notify.refusedBy', { status: String(result?.status ?? device.lastStatus ?? '-') })}
+                            {(result?.error ?? device.lastError) ? `: ${result?.error ?? device.lastError}` : ''}
+                          </span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
           )}
         </Section>

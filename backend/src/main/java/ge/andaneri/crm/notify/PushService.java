@@ -9,6 +9,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -57,15 +59,45 @@ public class PushService {
         }
     }
 
+    /** How one device answered: the push service's own status and words when it refused. */
+    public record Delivery(Long deviceId, String device, boolean accepted, Integer status, String error) {
+    }
+
     /** Sends to all of a person's devices, each in its own language. Returns how many accepted it. */
     public int sendToUser(Long userId, Function<String, Message> messageForLanguage) {
-        int delivered = 0;
+        return (int) sendToEachDevice(userId, messageForLanguage).stream().filter(Delivery::accepted).count();
+    }
+
+    /** The same send, with what each device answered - what the notification settings screen reports. */
+    public List<Delivery> sendToEachDevice(Long userId, Function<String, Message> messageForLanguage) {
+        List<Delivery> out = new ArrayList<>();
         for (PushSubscription subscription : subscriptions.findByUserId(userId)) {
-            if (send(subscription, messageForLanguage.apply(subscription.getLang()))) {
-                delivered++;
-            }
+            Long id = subscription.getId();
+            String device = deviceName(subscription.getUserAgent());
+            boolean ok = send(subscription, messageForLanguage.apply(subscription.getLang()));
+            // Re-read: send() writes down what the push service said, or removes the device for good.
+            PushSubscription after = subscriptions.findById(id).orElse(null);
+            out.add(new Delivery(id, device, ok, after == null ? 410 : after.getLastStatus(),
+                    after == null ? "gone" : after.getLastError()));
         }
-        return delivered;
+        return out;
+    }
+
+    /** "Android · Chrome", "iPhone · Safari": enough to tell one of your own devices from another. */
+    public static String deviceName(String userAgent) {
+        String agent = userAgent == null ? "" : userAgent;
+        String system = agent.contains("Android") ? "Android"
+                : agent.contains("iPhone") ? "iPhone"
+                : agent.contains("iPad") ? "iPad"
+                : agent.contains("Mac OS") ? "Mac"
+                : agent.contains("Windows") ? "Windows"
+                : agent.contains("Linux") ? "Linux" : "?";
+        String browser = agent.contains("Edg/") ? "Edge"
+                : agent.contains("OPR/") ? "Opera"
+                : agent.contains("Chrome/") ? "Chrome"
+                : agent.contains("Firefox/") ? "Firefox"
+                : agent.contains("Safari/") ? "Safari" : "?";
+        return system + " · " + browser;
     }
 
     boolean send(PushSubscription subscription, Message message) {
@@ -90,8 +122,13 @@ public class PushService {
                     .header("Authorization", WebPush.vapidAuthorization(subscription.getEndpoint(), keys.pair(), keys.subject(), Instant.now()))
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                     .build();
-            int status = http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            int status = response.statusCode();
             if (status >= 200 && status < 300) {
+                subscription.setLastStatus(status);
+                subscription.setLastError(null);
+                subscription.setLastTriedAt(Instant.now());
+                subscriptions.save(subscription);
                 subscriptions.markDelivered(subscription.getId(), Instant.now());
                 return true;
             }
@@ -99,13 +136,30 @@ public class PushService {
                 // The device unsubscribed or the browser data was cleared: this address is gone for good.
                 subscriptions.delete(subscription);
             } else {
-                log.warn("Push to device {} refused with HTTP {}", subscription.getId(), status);
+                // Google and Apple both explain themselves in the body; keep it, the screen shows it.
+                log.warn("Push to device {} refused with HTTP {}: {}", subscription.getId(), status, oneLine(response.body()));
+                subscription.setLastStatus(status);
+                subscription.setLastError(oneLine(response.body()));
+                subscription.setLastTriedAt(Instant.now());
+                subscriptions.save(subscription);
             }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         } catch (Exception ex) {
             log.warn("Push to device {} failed: {}", subscription.getId(), ex.toString());
+            subscription.setLastStatus(null);
+            subscription.setLastError(oneLine(ex.toString()));
+            subscription.setLastTriedAt(Instant.now());
+            subscriptions.save(subscription);
         }
         return false;
+    }
+
+    private static String oneLine(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String flat = text.replaceAll("\\s+", " ").strip();
+        return flat.length() <= 200 ? flat : flat.substring(0, 199) + "…";
     }
 }

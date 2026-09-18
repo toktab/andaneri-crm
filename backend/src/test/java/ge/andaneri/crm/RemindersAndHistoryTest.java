@@ -1,6 +1,7 @@
 package ge.andaneri.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.clearInvocations;
@@ -99,6 +100,43 @@ class RemindersAndHistoryTest {
         scheduler.runOnce(now.plusSeconds(120));
         assertThat(titlesSent()).contains("Reminder Bar");
         assertThat(bodiesSent()).anyMatch(b -> b.contains("Meeting") && b.contains("Giorgi"));
+    }
+
+    @Test
+    void aDeviceThatIsRefusedSaysWhoRefusedItAndWhy() throws Exception {
+        String admin = login("admin", "test-admin-password");
+        String phone = "https://fcm.googleapis.com/fcm/send/android-phone-1";
+        String registered = call(admin, post("/api/push/subscriptions").content("""
+                {"endpoint":"%s","keys":{"p256dh":"BPublicKey","auth":"authsecret"},"lang":"ka"}"""
+                .formatted(phone)), 200);
+        // The device is listed by what it is, and this device is marked as this device.
+        List<String> names = JsonPath.read(call(admin, get("/api/push/status?endpoint=" + phone), 200), "$.deviceList[*].name");
+        assertThat(names).isNotEmpty();
+        List<Boolean> isHere = JsonPath.read(call(admin, get("/api/push/status?endpoint=" + phone), 200), "$.deviceList[*].thisDevice");
+        assertThat(isHere).contains(true);
+        assertThat(((Number) JsonPath.read(registered, "$.devices")).intValue()).isGreaterThanOrEqualTo(1);
+
+        // Google refuses it: the answer travels back to the screen instead of only the server log.
+        Long deviceId = ((Number) JsonPath.read(call(admin, get("/api/push/status"), 200), "$.deviceList[0].id")).longValue();
+        when(push.sendToEachDevice(any(), any())).thenReturn(List.of(
+                new PushService.Delivery(deviceId, "Android · Chrome", false, 403, "UnauthorizedRegistration")));
+        String result = call(admin, post("/api/push/test"), 200);
+        assertThat((Integer) JsonPath.read(result, "$.sent")).isZero();
+        assertThat((String) JsonPath.read(result, "$.devices[0].device")).isEqualTo("Android · Chrome");
+        assertThat((Integer) JsonPath.read(result, "$.devices[0].status")).isEqualTo(403);
+        assertThat((String) JsonPath.read(result, "$.devices[0].error")).isEqualTo("UnauthorizedRegistration");
+
+        call(admin, post("/api/push/subscriptions/remove").content("""
+                {"endpoint":"%s"}""".formatted(phone)), 200);
+    }
+
+    @Test
+    void aPhoneAndALaptopAreToldApartByName() {
+        assertThat(PushService.deviceName("Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Mobile Safari/537.36"))
+                .isEqualTo("Android · Chrome");
+        assertThat(PushService.deviceName("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"))
+                .isEqualTo("iPhone · Safari");
+        assertThat(PushService.deviceName(null)).isEqualTo("? · ?");
     }
 
     @Test

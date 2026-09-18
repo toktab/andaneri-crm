@@ -17,12 +17,15 @@ import jakarta.validation.constraints.Size;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.HexFormat;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Switching notifications on and off per device, a test message, and each person's default reminder time. */
@@ -42,10 +45,26 @@ public class PushController {
     public record ReminderSettings(@NotNull @Min(0) @Max(10080) Integer reminderMinutes) {
     }
 
-    public record PushStatus(String publicKey, long devices, int reminderMinutes) {
+    public record PushStatus(String publicKey, long devices, int reminderMinutes, List<DeviceInfo> deviceList) {
+
+        static PushStatus of(String publicKey, List<PushSubscription> devices, int reminderMinutes, String here) {
+            return new PushStatus(publicKey, devices.size(), reminderMinutes,
+                    devices.stream().map(d -> DeviceInfo.of(d, here)).toList());
+        }
     }
 
-    public record TestResult(int sent) {
+    /** One device of this person's, as the notification screen lists it. */
+    public record DeviceInfo(Long id, String name, boolean thisDevice, Instant addedAt, Instant lastSuccessAt,
+            Integer lastStatus, String lastError) {
+
+        static DeviceInfo of(PushSubscription s, String here) {
+            return new DeviceInfo(s.getId(), PushService.deviceName(s.getUserAgent()),
+                    here != null && here.equals(s.getEndpointHash()), s.getCreatedAt(), s.getLastSuccessAt(),
+                    s.getLastStatus(), s.getLastError());
+        }
+    }
+
+    public record TestResult(int sent, List<PushService.Delivery> devices) {
     }
 
     private final PushSubscriptionRepository subscriptions;
@@ -64,9 +83,14 @@ public class PushController {
     }
 
     @GetMapping("/push/status")
-    public PushStatus status() {
+    public PushStatus status(@RequestParam(required = false) String endpoint) {
         User user = currentUser.require();
-        return new PushStatus(keys.publicKey(), subscriptions.countByUserId(user.getId()), user.getReminderMinutes());
+        return status(user, endpoint);
+    }
+
+    private PushStatus status(User user, String endpoint) {
+        return PushStatus.of(keys.publicKey(), subscriptions.findByUserId(user.getId()), user.getReminderMinutes(),
+                endpoint == null || endpoint.isBlank() ? null : hash(endpoint));
     }
 
     /** This device wants notifications. The same browser signed in as someone else moves over to them. */
@@ -85,7 +109,7 @@ public class PushController {
         subscription.setLang("en".equals(request.lang()) ? "en" : "ka");
         subscription.setUserAgent(ClientIp.userAgent(http));
         subscriptions.save(subscription);
-        return new PushStatus(keys.publicKey(), subscriptions.countByUserId(user.getId()), user.getReminderMinutes());
+        return status(user, request.endpoint());
     }
 
     @PostMapping("/push/subscriptions/remove")
@@ -94,13 +118,15 @@ public class PushController {
         subscriptions.findByEndpointHash(hash(request.endpoint()))
                 .filter(s -> s.getUser().getId().equals(user.getId()))
                 .ifPresent(subscriptions::delete);
-        return new PushStatus(keys.publicKey(), subscriptions.countByUserId(user.getId()), user.getReminderMinutes());
+        return status(user, null);
     }
 
+    /** Sends a test to every device and reports what each one answered, refusals included. */
     @PostMapping("/push/test")
     public TestResult test() {
         User user = currentUser.require();
-        return new TestResult(push.sendToUser(user.getId(), ReminderText::test));
+        List<PushService.Delivery> devices = push.sendToEachDevice(user.getId(), ReminderText::test);
+        return new TestResult((int) devices.stream().filter(PushService.Delivery::accepted).count(), devices);
     }
 
     @PutMapping("/me/reminders")
@@ -108,7 +134,7 @@ public class PushController {
         User user = users.findById(currentUser.require().getId()).orElseThrow(ApiException::notFound);
         user.setReminderMinutes(request.reminderMinutes());
         users.save(user);
-        return new PushStatus(keys.publicKey(), subscriptions.countByUserId(user.getId()), user.getReminderMinutes());
+        return status(user, null);
     }
 
     static String hash(String endpoint) {
