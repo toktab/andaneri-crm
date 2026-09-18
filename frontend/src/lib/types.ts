@@ -138,10 +138,14 @@ export interface ContactDto {
 }
 export interface ContactRef { id: number; name: string; roleTitle: string | null; phone: string | null }
 export interface CategoryUsageDto { categoryId: number; answer: UsageAnswer; notes: string | null; updatedAt: string }
+/** Where a flavor on the bar comes from: a bought bottle, fresh produce, or the bar's own kitchen. */
+export type UsageSource = 'BRAND' | 'FRESH' | 'HOUSE_MADE'
+export const USAGE_SOURCES: UsageSource[] = ['BRAND', 'FRESH', 'HOUSE_MADE']
+
 export interface UsageDto {
   id: number; categoryId: number; brandId: number | null; brandName: string | null; ownBrand: boolean
-  flavor: FlavorDto | null; productName: string | null; quantity: string | null; frequency: string | null
-  notes: string | null; createdAt: string
+  flavor: FlavorDto | null; source: UsageSource; productName: string | null; quantity: string | null
+  frequency: string | null; notes: string | null; createdAt: string
 }
 export interface InterestDto {
   id: number; flavor: FlavorDto | null; product: ProductRef | null; status: InterestStatus; reason: InterestReason

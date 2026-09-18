@@ -46,6 +46,7 @@ import ge.andaneri.crm.domain.TaskStatus;
 import ge.andaneri.crm.domain.TaskType;
 import ge.andaneri.crm.domain.TastingFeedback;
 import ge.andaneri.crm.domain.UsageAnswer;
+import ge.andaneri.crm.domain.UsageSource;
 import ge.andaneri.crm.domain.User;
 import ge.andaneri.crm.domain.UserRepository;
 import ge.andaneri.crm.service.AuditService;
@@ -112,7 +113,10 @@ public class JsonTransferService {
     }
 
     public record JsonUsage(String category, String brand, String flavor, String productName, String quantity,
-            String frequency, String notes) {
+            String frequency, String notes,
+            // --- version 2 ---
+            /** Bought, fresh, or made by the bar itself. Absent in a version 1 file means bought. */
+            String source) {
     }
 
     public record JsonInterest(String flavor, String product, String status, String reason, String feedback, String notes) {
@@ -250,7 +254,7 @@ public class JsonTransferService {
                     usages.findForBusiness(id).stream()
                             .map(u -> new JsonUsage(u.getCategory().getNameEn(), u.getBrand() == null ? null : u.getBrand().getName(),
                                     u.getFlavor() == null ? null : u.getFlavor().getNameEn(), u.getProductName(), u.getQuantity(),
-                                    u.getFrequency(), u.getNotes())).toList(),
+                                    u.getFrequency(), u.getNotes(), u.getSource().name())).toList(),
                     interests.findForBusiness(id).stream()
                             .map(i -> new JsonInterest(i.getFlavor() == null ? null : i.getFlavor().getNameEn(),
                                     i.getProduct() == null ? null : i.getProduct().getNameEn(), i.getStatus().name(),
@@ -434,6 +438,7 @@ public class JsonTransferService {
             usage.setBrand(lookup.brand(ju.brand()));
             usage.setFlavor(lookup.flavor(ju.flavor()));
             usage.setProductName(ImportParser.truncate(ju.productName(), 160));
+            usage.setSource(parse(UsageSource.class, ju.source(), UsageSource.BRAND));
             usage.setQuantity(ImportParser.truncate(ju.quantity(), 80));
             usage.setFrequency(ImportParser.truncate(ju.frequency(), 80));
             usage.setNotes(ju.notes());

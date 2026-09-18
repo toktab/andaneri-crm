@@ -2,6 +2,7 @@ package ge.andaneri.crm.seed;
 
 import ge.andaneri.crm.config.CrmProperties;
 import ge.andaneri.crm.domain.ActivityResult;
+import ge.andaneri.crm.domain.UsageSource;
 import ge.andaneri.crm.domain.ActivityType;
 import ge.andaneri.crm.domain.Brand;
 import ge.andaneri.crm.domain.BrandRepository;
@@ -116,9 +117,9 @@ public class DemoDataSeeder implements ApplicationRunner {
         Business vake = business(toko, "დემო: კოქტეილ ბარი ლეღვი", "Cocktail bar", "ჭავჭავაძის 37", "ვაკე", "+995 555 11 22 33",
                 BusinessStatus.MEETING, Priority.HIGH, "20:00-ის შემდეგ", Set.of(DrinkType.COCKTAILS, DrinkType.MOCKTAILS, DrinkType.LEMONADES), 30,
                 new ContactRequest("გიორგი", "ბარ მენეჯერი", "+995 599 12 34 56", null, null, true, "ჩვენი მთავარი კონტაქტი"));
-        businessService.addUsagesTo(vake, new UsageRequest(syrup, monin.getId(), ids("Vanilla", "Caramel", "Hazelnut"), null, "6 ბოთლი / თვე", null, null), toko);
+        businessService.addUsagesTo(vake, new UsageRequest(syrup, monin.getId(), UsageSource.BRAND, ids("Vanilla", "Caramel", "Hazelnut"), null, "6 ბოთლი / თვე", null, null), toko);
         businessService.upsertCategoryAnswer(vake, puree, UsageAnswer.YES, "მარწყვის პიურე, მარაკუიას ვერ შოულობენ");
-        businessService.addUsagesTo(vake, new UsageRequest(puree, boiron.getId(), ids("Strawberry"), null, null, null, null), toko);
+        businessService.addUsagesTo(vake, new UsageRequest(puree, boiron.getId(), UsageSource.BRAND, ids("Strawberry"), null, null, null, null), toko);
         businessService.addInterestsTo(vake, new InterestRequest(ids("Mango", "Passion Fruit"), null, InterestStatus.SAMPLE_REQUESTED,
                 InterestReason.PUREE_GAP, null, "მარაკუიას პიურე არ აქვთ"), toko);
         activity(vake, toko, ActivityType.CALL, ActivityResult.NO_ANSWER, 12, "არ აიღეს");
@@ -132,7 +133,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         activity(cafe, toko, ActivityType.VISIT, ActivityResult.INTERESTED, 55, "1883-ის ვანილი და კარამელი. ფასი ძვირია მათთვის.");
         purchase(cafe, toko, today.minusDays(48), "Vanilla", 6, "Caramel", 4);
         purchase(cafe, toko, today.minusDays(26), "Vanilla", 6, "Salted Caramel", 3);
-        businessService.addUsagesTo(cafe, new UsageRequest(syrup, routin.getId(), ids("Hazelnut"), null, null, null, null), toko);
+        businessService.addUsagesTo(cafe, new UsageRequest(syrup, routin.getId(), UsageSource.BRAND, ids("Hazelnut"), null, null, null, null), toko);
 
         // 3. A lead nobody has called for three weeks, with nothing planned.
         Business cold = business(nino, "დემო: ბარი ძველი უბანი", "Bar", "ლესელიძის 20", "ძველი თბილისი", "+995 555 33 44 55",
@@ -175,7 +176,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         activity(lounge, toko, ActivityType.CALL, ActivityResult.CALL_BACK, 2, "უშაქრო ვარიანტები აინტერესებთ");
         task(lounge, toko, TaskType.CALL, today, 18, "უშაქრო ფასები", null);
         task(lounge, toko, TaskType.VISIT, today.plusDays(6), 14, "უშაქრო სემპლები წავუღოთ", null);
-        businessService.addUsagesTo(lounge, new UsageRequest(syrup, andaneri.getId(), ids("Lemon"), null, null, null, null), toko);
+        businessService.addUsagesTo(lounge, new UsageRequest(syrup, andaneri.getId(), UsageSource.BRAND, ids("Lemon"), null, null, null, null), toko);
 
         log.warn("Demo data loaded. Sign in as toko, nino or supervisor with password '{}'.", DEMO_PASSWORD);
     }

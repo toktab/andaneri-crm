@@ -3,6 +3,7 @@ package ge.andaneri.crm.io;
 import ge.andaneri.crm.common.ApiException;
 import ge.andaneri.crm.config.CrmProperties;
 import ge.andaneri.crm.domain.Activity;
+import ge.andaneri.crm.domain.UsageSource;
 import ge.andaneri.crm.domain.ActivityRepository;
 import ge.andaneri.crm.domain.Brand;
 import ge.andaneri.crm.domain.BrandRepository;
@@ -392,14 +393,14 @@ public class ImportService {
             List<Long> flavorIds = row.flavors().stream().map(flavorByName::get).filter(Objects::nonNull).map(Flavor::getId).toList();
             List<Brand> usedBrands = row.brands().stream().map(this::brand).toList();
             if (usedBrands.size() == 1) {
-                businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), usedBrands.get(0).getId(), flavorIds, null, null, null, row.flavorText()), user);
+                businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), usedBrands.get(0).getId(), UsageSource.BRAND, flavorIds, null, null, null, row.flavorText()), user);
             } else {
                 // With two brands the sheet does not say which flavor is whose, so neither is guessed.
                 for (Brand brand : usedBrands) {
-                    businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), brand.getId(), List.of(), null, null, null, null), user);
+                    businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), brand.getId(), UsageSource.BRAND, List.of(), null, null, null, null), user);
                 }
                 if (!flavorIds.isEmpty()) {
-                    businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), null, flavorIds, null, null, null, row.flavorText()), user);
+                    businessService.addUsagesTo(b, new UsageRequest(syrup.getId(), null, UsageSource.BRAND, flavorIds, null, null, null, row.flavorText()), user);
                 }
             }
             if (row.flavorText() != null && flavorIds.isEmpty()) {

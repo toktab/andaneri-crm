@@ -605,6 +605,7 @@ public class BusinessService {
             usage.setCategory(category);
             usage.setBrand(brand);
             usage.setFlavor(flavor);
+            usage.setSource(request.source());
             usage.setProductName(Text.blankToNull(request.productName()));
             usage.setQuantity(Text.blankToNull(request.quantity()));
             usage.setFrequency(Text.blankToNull(request.frequency()));
@@ -635,6 +636,7 @@ public class BusinessService {
         usage.setBrand(request.brandId() == null ? null
                 : brands.findById(request.brandId()).orElseThrow(() -> ApiException.field("brandId", "invalid")));
         usage.setFlavor(request.flavorId() == null ? null : flavor(request.flavorId()));
+        usage.setSource(request.source());
         usage.setProductName(Text.blankToNull(request.productName()));
         usage.setQuantity(Text.blankToNull(request.quantity()));
         usage.setFrequency(Text.blankToNull(request.frequency()));

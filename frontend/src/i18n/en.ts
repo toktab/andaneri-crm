@@ -5,7 +5,7 @@ export const en: Dict = {
   nav: {
     today: 'Today', calls: 'Calls', businesses: 'Businesses', pipeline: 'Pipeline', calendar: 'Calendar',
     tasks: 'Tasks', notes: 'Notes', products: 'Products', reports: 'Reports', import: 'Import / export',
-    admin: 'Admin', more: 'More', start: 'Start', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
+    admin: 'Admin', more: 'More', start: 'Start', flavors: 'Flavors', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
   },
   install: { title: 'Add the CRM to your Home Screen', hint: 'It opens like an app, full screen, and reminders can reach you.', button: 'Add' },
   notify: {
@@ -95,6 +95,7 @@ export const en: Dict = {
     FOLLOW_UP_LATER: 'Follow up later', NOT_INTERESTED: 'Not interested', LOST: 'Lost',
   },
   priority: { LOW: 'Low', NORMAL: 'Normal', HIGH: 'High' },
+  usageSource: { label: 'Where it comes from', hint: 'A bought bottle, fresh produce, or the bar makes it', BRAND: 'Bought syrup', FRESH: 'Fresh', HOUSE_MADE: 'They make it' },
   usage: { YES: 'Yes', NO: 'No', SOMETIMES: 'Sometimes', UNKNOWN: 'Unknown' },
   openness: { YES: 'Ready to switch', MAYBE: 'Maybe', NO: 'No', UNKNOWN: 'Unknown' },
   priceSensitivity: { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', UNKNOWN: 'Unknown' },
@@ -268,6 +269,15 @@ export const en: Dict = {
   },
   pipeline: { title: 'Pipeline', hint: 'Drag a card to another column to change its status', empty: 'Empty' },
   route: { mode: 'Route mode', hint: 'Turn it on when you are out: tap a stop and get everything at a glance - where, who to ask for, what to bring and what was said last time.', today: "Today's route ({n})" },
+  flavors: {
+    title: 'Flavor mode', subtitle: 'One screen: what they pour, what they make themselves, what they asked about, and what to pack',
+    pick: 'Business', pickHint: 'Pick a business to see everything about its flavors',
+    boughtSyrups: 'Syrups (bought)', otherBought: 'Other bought (puree, sauce...)',
+    noneFresh: 'No fresh in use (or not asked yet)', noneHouse: 'Nothing house-made (or not asked yet)',
+    alreadyLeft: 'Already left with them', testers: 'Tester bottles (100 ml)',
+    testersHint: 'Tick what goes in the bag', inBag: 'In the bag: {n}', copyList: 'Copy the list',
+    planDelivery: 'Plan the delivery', planned: 'Delivery planned',
+  },
   calendar: { title: 'Calendar', month: 'Month', week: 'Week', day: 'Day', agenda: 'List', newEvent: 'New', today: 'Today', mine: 'Mine', everyone: 'Everyone' },
   tasks: {
     title: 'Tasks', overdue: 'Overdue', today: 'Today', upcoming: 'Upcoming', done: 'Done', newTask: 'New task',

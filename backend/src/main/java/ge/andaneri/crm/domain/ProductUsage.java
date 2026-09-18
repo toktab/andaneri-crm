@@ -2,6 +2,8 @@ package ge.andaneri.crm.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -36,6 +38,11 @@ public class ProductUsage {
     @JoinColumn(name = "flavor_id")
     private Flavor flavor;
 
+    /** Bought, fresh, or made by the bar itself. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UsageSource source = UsageSource.BRAND;
+
     private String productName;
     private String quantity;
     private String frequency;
@@ -57,6 +64,8 @@ public class ProductUsage {
     public void setCategory(ProductCategory category) { this.category = category; }
     public Brand getBrand() { return brand; }
     public void setBrand(Brand brand) { this.brand = brand; }
+    public UsageSource getSource() { return source; }
+    public void setSource(UsageSource source) { this.source = source == null ? UsageSource.BRAND : source; }
     public Flavor getFlavor() { return flavor; }
     public void setFlavor(Flavor flavor) { this.flavor = flavor; }
     public String getProductName() { return productName; }

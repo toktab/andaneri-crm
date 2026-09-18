@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import type { BrandDto, FlavorDto, InterestReason, InterestStatus, TastingFeedback, UsageDto } from '../lib/types'
+import type { BrandDto, FlavorDto, InterestReason, InterestStatus, TastingFeedback, UsageDto, UsageSource } from '../lib/types'
+import { USAGE_SOURCES } from '../lib/types'
 import { keys, useLookups, useProducts, useRefreshWork } from '../lib/queries'
 import { useI18n } from '../i18n'
 import { ChipPicker } from './ChipPicker'
@@ -36,6 +37,8 @@ export function UsageDialog({ open, onClose, businessId, usage }: {
   const refresh = useRefreshWork()
   const { lookups, brandOptions, flavorOptions, createBrand, createFlavor } = useCatalogPickers()
   const [categoryId, setCategoryId] = useState('')
+  // Where it comes from: a bought bottle, fresh produce, or the bar's own kitchen.
+  const [source, setSource] = useState<UsageSource>('BRAND')
   const [brand, setBrand] = useState<number[]>([])
   const [flavors, setFlavors] = useState<number[]>([])
   const [quantity, setQuantity] = useState('')
@@ -47,6 +50,7 @@ export function UsageDialog({ open, onClose, businessId, usage }: {
   // what has been filled in so far.
   useEffect(() => {
     if (!open) return
+    setSource(usage?.source ?? 'BRAND')
     setBrand(usage?.brandId ? [usage.brandId] : [])
     setFlavors(usage?.flavor ? [usage.flavor.id] : [])
     setQuantity(usage?.quantity ?? ''); setFrequency(usage?.frequency ?? ''); setNotes(usage?.notes ?? '')
@@ -65,12 +69,12 @@ export function UsageDialog({ open, onClose, businessId, usage }: {
     try {
       if (usage) {
         await api.put(`/businesses/${businessId}/usages/${usage.id}`, {
-          categoryId: Number(categoryId), brandId: brand[0] ?? null, flavorId: flavors[0] ?? null,
+          categoryId: Number(categoryId), brandId: source === 'BRAND' ? brand[0] ?? null : null, source, flavorId: flavors[0] ?? null,
           productName: usage.productName, quantity, frequency, notes,
         })
       } else {
         await api.post(`/businesses/${businessId}/usages`, {
-          categoryId: Number(categoryId), brandId: brand[0] ?? null, flavorIds: flavors, quantity, frequency, notes,
+          categoryId: Number(categoryId), brandId: source === 'BRAND' ? brand[0] ?? null : null, source, flavorIds: flavors, quantity, frequency, notes,
         })
       }
       toast.ok(t('common.saved'))
@@ -91,7 +95,7 @@ export function UsageDialog({ open, onClose, businessId, usage }: {
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
-          <button type="button" className="btn-primary" disabled={saving || !categoryId || (!brand.length && !flavors.length)} onClick={() => void save()}>
+          <button type="button" className="btn-primary" disabled={saving || !categoryId || (source === 'BRAND' ? !brand.length && !flavors.length : !flavors.length)} onClick={() => void save()}>
             {saving && <Spinner className="size-4" />} {t('common.save')}
           </button>
         </>
@@ -103,10 +107,21 @@ export function UsageDialog({ open, onClose, businessId, usage }: {
             {lookups.data?.categories.map((c) => <option key={c.id} value={c.id}>{name(c)}</option>)}
           </select>
         </Field>
-        <div>
-          <div className="label">{t('business.brand')}</div>
-          <ChipPicker single options={brandOptions} selected={brand} onChange={setBrand} onCreate={createBrand} placeholder="Monin, 1883, Boiron..." initialCount={12} />
-        </div>
+        <Field label={t('usageSource.label')} hint={t('usageSource.hint')}>
+          <Choice
+            size="sm"
+            options={USAGE_SOURCES.map((value) => ({ value, label: t(`usageSource.${value}`) }))}
+            value={source}
+            onChange={setSource}
+          />
+        </Field>
+        {/* A fresh fruit or something the bar cooks itself has no brand behind it. */}
+        {source === 'BRAND' && (
+          <div>
+            <div className="label">{t('business.brand')}</div>
+            <ChipPicker single options={brandOptions} selected={brand} onChange={setBrand} onCreate={createBrand} placeholder="Monin, 1883, Boiron..." initialCount={12} />
+          </div>
+        )}
         <div>
           <div className="label">{t('business.flavors')}</div>
           <ChipPicker options={flavorOptions} selected={flavors} onChange={setFlavors} onCreate={createFlavor} placeholder={t('common.search')} />

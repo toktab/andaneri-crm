@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleCheck, Clock, ExternalLink, MapPin, Star } from 'lucide-react'
+import { CircleCheck, Clock, ExternalLink, FlaskConical, MapPin, Star } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBusiness, useLookups, useRefreshWork, useTimeline } from '../lib/queries'
 import { fmtDateTime, fmtShortDate, fmtTime, mapsHref, money } from '../lib/format'
@@ -54,14 +54,19 @@ export function RouteBriefing({ task, onClose }: { task: TaskDto | null; onClose
       open={Boolean(task)}
       onClose={onClose}
       title={task?.businessName ?? task?.title ?? ''}
-      footer={task && canEdit(b?.canEdit) && (
+      footer={task && (
         <>
           {task.businessId && (
+            <Link to={`/flavors/${task.businessId}`} className="btn-secondary" onClick={onClose}>
+              <FlaskConical className="size-4" /> {t('flavors.title')}
+            </Link>
+          )}
+          {task.businessId && canEdit(b?.canEdit) && (
             <Link to={`/businesses/${task.businessId}?task=${task.id}`} className="btn-secondary" onClick={onClose}>
               <ExternalLink className="size-4" /> {t('business.logActivity')}
             </Link>
           )}
-          {task.status === 'OPEN' && (
+          {task.status === 'OPEN' && canEdit(b?.canEdit) && (
             <button type="button" className="btn-primary" onClick={() => void complete()}>
               <CircleCheck className="size-4" /> {t('tasks.complete')}
             </button>

@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ArrowDownUp, Bell, CalendarDays, CalendarPlus, ChartColumn, Clock, Eye, EyeOff, House, KeyRound, LayoutGrid, ListChecks, LogOut, Menu, Monitor, Moon,
+  ArrowDownUp, Bell, CalendarDays, CalendarPlus, ChartColumn, Clock, Eye, EyeOff, FlaskConical, House, KeyRound, LayoutGrid, ListChecks, LogOut, Menu, Monitor, Moon,
   Package, PenLine, Phone, Plus, Search, Settings, ShieldCheck, SquareKanban, StickyNote, Store, Sun, X,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -30,6 +30,7 @@ const NAV = [
   { to: '/calls', key: 'calls', icon: Phone },
   { to: '/businesses', key: 'businesses', icon: Store },
   { to: '/pipeline', key: 'pipeline', icon: SquareKanban },
+  { to: '/flavors', key: 'flavors', icon: FlaskConical },
   { to: '/calendar', key: 'calendar', icon: CalendarDays },
   { to: '/tasks', key: 'tasks', icon: ListChecks },
   { to: '/notes', key: 'notes', icon: StickyNote },

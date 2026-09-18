@@ -120,6 +120,11 @@ class BackupRestoreRoundTripTest {
                 {"businessId":%d,"type":"CALL","title":"შეხსენებით","dueAt":"%s","remindMinutes":120}"""
                 .formatted(barId, Instant.now().plus(4, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS))), 200);
 
+        // A flavor they squeeze fresh, and one they cook themselves: neither is a bought bottle.
+        Integer lemonId = idOf(lookups, "$.flavors[?(@.nameEn == 'Lemon')].id");
+        call(admin, post("/api/businesses/" + barId + "/usages").content("""
+                {"categoryId":%d,"source":"FRESH","flavorIds":[%d],"quantity":"ყოველდღე"}""".formatted(syrupId, lemonId)), 200);
+
         call(admin, post("/api/businesses/" + barId + "/purchases").content("""
                 {"purchaseDate":"2026-09-01","items":[{"description":"ვანილი","quantity":6,"unitPrice":18}]}"""), 200);
         call(admin, post("/api/notes").content("""
@@ -162,7 +167,12 @@ class BackupRestoreRoundTripTest {
         assertThat((String) JsonPath.read(after, "$.contacts[0].name")).isEqualTo("Giorgi");
         assertThat((Boolean) JsonPath.read(after, "$.contacts[0].decisionMaker")).isTrue();
         List<String> usedFlavors = JsonPath.read(after, "$.usages[*].flavor.nameEn");
-        assertThat(usedFlavors).containsExactly("Mango");
+        assertThat(usedFlavors).containsExactlyInAnyOrder("Mango", "Lemon");
+        // The bought one is still bought, and the fresh one is still fresh.
+        List<String> mangoSource = JsonPath.read(after, "$.usages[?(@.flavor.nameEn == 'Mango')].source");
+        assertThat(mangoSource).containsExactly("BRAND");
+        List<String> lemonSource = JsonPath.read(after, "$.usages[?(@.flavor.nameEn == 'Lemon')].source");
+        assertThat(lemonSource).containsExactly("FRESH");
         List<String> wanted = JsonPath.read(after, "$.interests[*].flavor.nameEn");
         assertThat(wanted).containsExactly("Mango");
         assertThat((Integer) JsonPath.read(after, "$.purchases.count")).isEqualTo(1);

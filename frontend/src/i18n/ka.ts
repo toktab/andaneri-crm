@@ -6,7 +6,7 @@ export const ka = {
   nav: {
     today: 'დღეს', calls: 'ზარები', businesses: 'ბიზნესები', pipeline: 'ფაიპლაინი', calendar: 'კალენდარი',
     tasks: 'ამოცანები', notes: 'ჩანაწერები', products: 'პროდუქცია', reports: 'რეპორტი', import: 'იმპორტი / ექსპორტი',
-    admin: 'ადმინისტრირება', more: 'სხვა', start: 'დაწყება', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
+    admin: 'ადმინისტრირება', more: 'სხვა', start: 'დაწყება', flavors: 'გემოები', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
   },
   install: { title: 'დაამატეთ CRM მთავარ ეკრანზე', hint: 'გაიხსნება აპივით, სრულ ეკრანზე, და შეხსენებებიც მოვა.', button: 'დამატება' },
   notify: {
@@ -96,6 +96,7 @@ export const ka = {
     FOLLOW_UP_LATER: 'მოგვიანებით', NOT_INTERESTED: 'არ დაინტერესდა', LOST: 'დაკარგული',
   },
   priority: { LOW: 'დაბალი', NORMAL: 'საშუალო', HIGH: 'მაღალი' },
+  usageSource: { label: 'საიდან აქვთ', hint: 'ნაყიდი ბრენდი, ფრეში თუ თვითონ ამზადებენ', BRAND: 'ნაყიდი სიროფი', FRESH: 'ფრეში', HOUSE_MADE: 'თვითონ ამზადებენ' },
   usage: { YES: 'კი', NO: 'არა', SOMETIMES: 'ხანდახან', UNKNOWN: 'უცნობი' },
   openness: { YES: 'მზად არიან', MAYBE: 'შესაძლოა', NO: 'არა', UNKNOWN: 'უცნობი' },
   priceSensitivity: { LOW: 'დაბალი', MEDIUM: 'საშუალო', HIGH: 'მაღალი', UNKNOWN: 'უცნობი' },
@@ -269,6 +270,15 @@ export const ka = {
   },
   pipeline: { title: 'ფაიპლაინი', hint: 'გადაიტანეთ ბარათი სხვა სვეტში სტატუსის შესაცვლელად', empty: 'ცარიელი' },
   route: { mode: 'გასვლის რეჟიმი', hint: 'ჩართე, როცა გზაში ხარ: ადგილზე დააჭირე და ერთ ეკრანზე ნახავ ყველაფერს - სად, ვისთან, რა უნდა მიიტანო და რა ითქვა ბოლოს.', today: 'დღევანდელი მარშრუტი ({n})' },
+  flavors: {
+    title: 'გემოების რეჟიმი', subtitle: 'ერთ ეკრანზე: რას ხმარობენ, რას აკეთებენ თვითონ, რა აინტერესებთ და რა ჩავალაგოთ ჩანთაში',
+    pick: 'ბიზნესი', pickHint: 'აირჩიეთ ბიზნესი და ნახავთ ყველაფერს გემოებზე',
+    boughtSyrups: 'სიროფები (ნაყიდი)', otherBought: 'სხვა ნაყიდი (პიურე, სოუსი...)',
+    noneFresh: 'ფრეშს არ იყენებენ (ან ჯერ არ ვიცით)', noneHouse: 'თვითონ არაფერს ამზადებენ (ან ჯერ არ ვიცით)',
+    alreadyLeft: 'უკვე დავუტოვეთ', testers: 'საცდელი ბოთლები (100 მლ)',
+    testersHint: 'მონიშნეთ, რა ჩავალაგოთ', inBag: 'ჩანთაში: {n}', copyList: 'სიის კოპირება',
+    planDelivery: 'მიტანის დაგეგმვა', planned: 'მიტანა დაიგეგმა',
+  },
   calendar: { title: 'კალენდარი', month: 'თვე', week: 'კვირა', day: 'დღე', agenda: 'სია', newEvent: 'ახალი', today: 'დღეს', mine: 'ჩემი', everyone: 'ყველას' },
   tasks: {
     title: 'ამოცანები', overdue: 'ვადაგადაცილებული', today: 'დღეს', upcoming: 'მომავალი', done: 'შესრულებული', newTask: 'ახალი ამოცანა',

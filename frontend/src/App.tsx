@@ -22,6 +22,7 @@ const ImportPage = lazy(() => import('./pages/ImportPage').then((m) => ({ defaul
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })))
 const SecurityPage = lazy(() => import('./pages/SecurityPage').then((m) => ({ default: m.SecurityPage })))
 const HistoryPage = lazy(() => import('./pages/HistoryPage').then((m) => ({ default: m.HistoryPage })))
+const FlavorPage = lazy(() => import('./pages/FlavorPage').then((m) => ({ default: m.FlavorPage })))
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, checking } = useAuth()
@@ -56,6 +57,8 @@ export function App() {
         <Route path="businesses" element={<BusinessesPage />} />
         <Route path="businesses/:id" element={<BusinessPage />} />
         <Route path="pipeline" element={<PipelinePage />} />
+        <Route path="flavors" element={<FlavorPage />} />
+        <Route path="flavors/:id" element={<FlavorPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="notes" element={<NotesPage />} />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, CalendarPlus, Clock, FileSpreadsheet, Globe, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShoppingCart, Sparkles, Star, StickyNote,
+  ArrowLeft, CalendarPlus, Clock, FlaskConical, FileSpreadsheet, Globe, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShoppingCart, Sparkles, Star, StickyNote,
   ThumbsDown, ThumbsUp, User, X,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -142,6 +142,7 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
           </div>
           <div className="no-print hidden flex-wrap gap-2 md:flex">
             <Link to={`/calls/${b.id}`} className="btn-primary"><Phone className="size-4" /> {t('dashboard.startCalling')}</Link>
+            <Link to={`/flavors/${b.id}`} className="btn-secondary"><FlaskConical className="size-4" /> {t('flavors.title')}</Link>
             {editable && (
               <>
                 <button type="button" className="btn-secondary" onClick={() => setLog({ type: 'VISIT', task: null })}><MessageSquare className="size-4" /> {t('business.logActivity')}</button>
@@ -167,6 +168,9 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
               <button type="button" className="btn-secondary px-4 py-3" onClick={() => setTaskOpen('new')} title={t('business.schedule')}>
                 <CalendarPlus className="size-5" />
               </button>
+              <Link to={`/flavors/${b.id}`} className="btn-secondary px-4 py-3" title={t('flavors.title')}>
+                <FlaskConical className="size-5" />
+              </Link>
               <button type="button" className="btn-secondary px-4 py-3" onClick={() => setEditOpen(true)} title={t('business.editDetails')}>
                 <Pencil className="size-5" />
               </button>

@@ -15,6 +15,7 @@ import ge.andaneri.crm.domain.Priority;
 import ge.andaneri.crm.domain.ProductUsage;
 import ge.andaneri.crm.domain.Satisfaction;
 import ge.andaneri.crm.domain.UsageAnswer;
+import ge.andaneri.crm.domain.UsageSource;
 import ge.andaneri.crm.web.CatalogDtos.FlavorDto;
 import ge.andaneri.crm.web.CatalogDtos.ProductRef;
 import ge.andaneri.crm.web.UserDtos.UserRef;
@@ -191,6 +192,8 @@ public final class BusinessDtos {
     public record UsageRequest(
             @NotNull Long categoryId,
             Long brandId,
+            /** Bought, fresh, or made by the bar itself. Absent means bought. */
+            UsageSource source,
             List<Long> flavorIds,
             @Size(max = 160) String productName,
             @Size(max = 80) String quantity,
@@ -201,6 +204,7 @@ public final class BusinessDtos {
     public record UsageUpdate(
             @NotNull Long categoryId,
             Long brandId,
+            UsageSource source,
             Long flavorId,
             @Size(max = 160) String productName,
             @Size(max = 80) String quantity,
@@ -209,13 +213,13 @@ public final class BusinessDtos {
     }
 
     public record UsageDto(Long id, Long categoryId, Long brandId, String brandName, boolean ownBrand, FlavorDto flavor,
-            String productName, String quantity, String frequency, String notes, Instant createdAt) {
+            UsageSource source, String productName, String quantity, String frequency, String notes, Instant createdAt) {
         public static UsageDto of(ProductUsage u) {
             return new UsageDto(u.getId(), u.getCategory().getId(),
                     u.getBrand() == null ? null : u.getBrand().getId(),
                     u.getBrand() == null ? null : u.getBrand().getName(),
                     u.getBrand() != null && u.getBrand().isOwn(),
-                    FlavorDto.of(u.getFlavor()), u.getProductName(), u.getQuantity(), u.getFrequency(), u.getNotes(),
+                    FlavorDto.of(u.getFlavor()), u.getSource(), u.getProductName(), u.getQuantity(), u.getFrequency(), u.getNotes(),
                     u.getCreatedAt());
         }
     }

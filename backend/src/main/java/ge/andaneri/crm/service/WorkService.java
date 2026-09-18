@@ -4,6 +4,7 @@ import ge.andaneri.crm.auth.CurrentUser;
 import ge.andaneri.crm.common.ApiException;
 import ge.andaneri.crm.common.Text;
 import ge.andaneri.crm.domain.Activity;
+import ge.andaneri.crm.domain.UsageSource;
 import ge.andaneri.crm.domain.ActivityRepository;
 import ge.andaneri.crm.domain.Business;
 import ge.andaneri.crm.domain.BusinessStatus;
@@ -506,7 +507,7 @@ public class WorkService {
         for (Product product : bought) {
             List<Long> flavorIds = product.getFlavors().stream().map(Flavor::getId).toList();
             businessService.addUsagesTo(b, new UsageRequest(product.getCategory().getId(), product.getBrand().getId(),
-                    flavorIds, null, null, null, null), user);
+                    UsageSource.BRAND, flavorIds, null, null, null, null), user);
         }
         markInterestsPurchased(b, bought);
         for (Task task : tasks.findForBusiness(businessId)) {
