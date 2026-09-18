@@ -14,6 +14,7 @@ export const en: Dict = {
     pushTitle: 'Notifications on this device', pushHint: 'The reminder arrives on this phone or computer, even when the CRM is closed.',
     onHere: 'On', turnOn: 'Turn on', turnOff: 'Turn off', test: 'Send a test', testSent: 'Sent to {n} device(s)',
     devices: 'Devices with notifications on: {n}', enabled: 'Notifications are on',
+    androidHint: 'If reminders arrive late: phone Settings → Apps → Chrome → Battery → Unrestricted. Adding the CRM to the Home Screen also makes it steadier.',
     deniedHelp: 'Notifications are blocked. Allow them for this site in the browser or phone settings.',
     unsupported: 'This browser does not support notifications. Try Chrome, Edge, Firefox or Safari.',
     iosTitle: 'On iPhone, first add the CRM to the Home Screen:', iosStep1: 'In Safari, tap Share',

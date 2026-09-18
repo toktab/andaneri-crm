@@ -7,7 +7,7 @@ import {
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
-import { pushOnHere, resyncPush } from '../lib/push'
+import { pushOnHere, resyncPush, watchResubscribe } from '../lib/push'
 import { useTheme, type ThemeChoice } from '../lib/theme'
 import { useDashboard } from '../lib/queries'
 import { tap, useIsPhone } from '../lib/mobile'
@@ -68,9 +68,15 @@ export function Layout() {
   useReminders(user?.id ?? null)
 
   // A device with notifications on re-registers on every start: new sign-in, new language, renewed address.
+  const language = useRef(lang)
+  language.current = lang
   useEffect(() => {
     if (user?.id) void resyncPush(lang)
   }, [user?.id, lang])
+
+  // ...and again the moment the browser hands the service worker a new push address, which is what
+  // Android does on its own schedule.
+  useEffect(() => watchResubscribe(() => language.current), [])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -435,7 +441,8 @@ function useReminders(userId: number | null) {
           const key = `t${task.id}@${task.dueAt}`
           if (seen.has(key)) continue
           seen.add(key)
-          say(`${fmtTime(task.dueAt)} ${translate.current(`taskType.${task.type}`)}: ${task.businessName ?? task.title ?? ''}`)
+          say([task.businessName ?? task.title ?? '', `${fmtTime(task.dueAt)} · ${translate.current(`taskType.${task.type}`)}`, task.contact?.name]
+            .filter(Boolean).join(' · '))
         }
         const notes = await api.get<NoteDto[]>('/notes')
         for (const note of notes) {

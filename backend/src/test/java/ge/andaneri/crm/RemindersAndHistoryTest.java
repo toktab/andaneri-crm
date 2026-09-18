@@ -57,12 +57,15 @@ class RemindersAndHistoryTest {
     void aTaskIsRemindedOnceAtItsTimeAndAgainAfterItIsMoved() throws Exception {
         String admin = login("admin", "test-admin-password");
         Integer barId = JsonPath.read(call(admin, post("/api/businesses").content("""
-                {"name":"Reminder Bar","phone":"+995 555 70 70 70"}"""), 200), "$.id");
+                {"name":"Reminder Bar","phone":"+995 555 70 70 70",
+                 "firstContact":{"name":"Giorgi","phone":"599 70 70 70","decisionMaker":true}}"""), 200), "$.id");
+        Integer giorgi = JsonPath.read(call(admin, get("/api/businesses/" + barId), 200), "$.contacts[0].id");
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
         // In 20 minutes, default reminder 30 minutes before: due now.
         Integer soon = JsonPath.read(call(admin, post("/api/tasks").content("""
-                {"type":"MEETING","businessId":%d,"title":"Tasting","dueAt":"%s"}""".formatted(barId, now.plus(Duration.ofMinutes(20)))), 200), "$.id");
+                {"type":"MEETING","businessId":%d,"contactId":%d,"title":"Tasting","dueAt":"%s"}"""
+                .formatted(barId, giorgi, now.plus(Duration.ofMinutes(20)))), 200), "$.id");
         // In 2 hours: not yet.
         call(admin, post("/api/tasks").content("""
                 {"type":"CALL","businessId":%d,"title":"Later call","dueAt":"%s"}""".formatted(barId, now.plus(Duration.ofHours(2)))), 200);
@@ -71,10 +74,13 @@ class RemindersAndHistoryTest {
                 {"type":"VISIT","businessId":%d,"title":"Silent visit","dueAt":"%s","remindMinutes":0}""".formatted(barId, now.plus(Duration.ofMinutes(5)))), 200);
 
         scheduler.runOnce(now);
-        assertThat(titlesSent()).anyMatch(t -> t.contains("Reminder Bar") && t.contains("Meeting"))
-                .noneMatch(t -> t.contains("Visit") && t.contains("Reminder Bar"))
-                .noneMatch(t -> t.contains("Call") && t.contains("Reminder Bar"));
-        assertThat(bodiesSent()).anyMatch(b -> b.contains("+995 555 70 70 70") && b.contains("Tasting"));
+        // The place is the headline, and under it the hour, the kind of visit and who it is with.
+        assertThat(titlesSent()).containsExactly("Reminder Bar");
+        assertThat(bodiesSent()).allSatisfy(b -> {
+            assertThat(b).matches("^\\d{2}:\\d{2} · Meeting · Giorgi.*");
+            assertThat(b).contains("599 70 70 70").contains("Tasting");
+        });
+        assertThat(bodiesSent()).noneMatch(b -> b.contains("Visit") || b.contains("Call"));
 
         clearInvocations(push);
         scheduler.runOnce(now.plusSeconds(60));
@@ -82,14 +88,17 @@ class RemindersAndHistoryTest {
 
         // The call two hours ahead comes up 30 minutes before it.
         scheduler.runOnce(now.plus(Duration.ofMinutes(91)));
-        assertThat(titlesSent()).anyMatch(t -> t.contains("Reminder Bar") && t.contains("Call"));
+        assertThat(titlesSent()).contains("Reminder Bar");
+        assertThat(bodiesSent()).anyMatch(b -> b.contains("Call") && b.contains("Later call"));
 
         // Moving the meeting makes it remind again.
         clearInvocations(push);
         call(admin, put("/api/tasks/" + soon).content("""
-                {"type":"MEETING","businessId":%d,"title":"Tasting","dueAt":"%s","remindMinutes":60}""".formatted(barId, now.plus(Duration.ofMinutes(50)))), 200);
+                {"type":"MEETING","businessId":%d,"contactId":%d,"title":"Tasting","dueAt":"%s","remindMinutes":60}"""
+                .formatted(barId, giorgi, now.plus(Duration.ofMinutes(50)))), 200);
         scheduler.runOnce(now.plusSeconds(120));
-        assertThat(titlesSent()).anyMatch(t -> t.contains("Reminder Bar") && t.contains("Meeting"));
+        assertThat(titlesSent()).contains("Reminder Bar");
+        assertThat(bodiesSent()).anyMatch(b -> b.contains("Meeting") && b.contains("Giorgi"));
     }
 
     @Test

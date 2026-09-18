@@ -15,6 +15,10 @@ export function isIos(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
+export function isAndroid(): boolean {
+  return /Android/.test(navigator.userAgent)
+}
+
 /** Opened from the Home Screen icon rather than a browser tab. */
 export function isStandalone(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
@@ -80,11 +84,40 @@ export async function disablePush(): Promise<void> {
 /**
  * On every start with notifications on: tell the server about this device again. It follows a change of
  * language, a different person signing in on the same browser, and a push address the browser renewed.
+ *
+ * It also heals a device that quietly lost its subscription - which is how notifications stop on Android,
+ * where Chrome drops one when it rotates addresses, when site data is cleared, or when the phone's
+ * battery manager takes the browser apart. Permission is still granted, so nothing has to be asked again:
+ * the service worker is registered and the subscription taken out afresh.
  */
 export async function resyncPush(lang: string): Promise<void> {
   if (!pushOnHere()) return
-  const subscription = await currentSubscription()
-  if (subscription) await register(subscription, lang).catch(() => undefined)
+  try {
+    let subscription = await currentSubscription()
+    if (!subscription) subscription = await subscribeAgain()
+    if (subscription) await register(subscription, lang)
+  } catch {
+    /* offline, or the browser refused: the next start tries again */
+  }
+}
+
+/** Takes the subscription out again on a device that already has permission. */
+async function subscribeAgain(): Promise<PushSubscription | null> {
+  if (!pushSupported() || Notification.permission !== 'granted') return null
+  const status = await api.get<PushStatus>('/push/status')
+  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  await navigator.serviceWorker.ready
+  return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromBase64Url(status.publicKey) })
+}
+
+/** The service worker says the browser gave it a new address: register it before a reminder is missed. */
+export function watchResubscribe(lang: () => string): () => void {
+  if (!pushSupported()) return () => undefined
+  const onMessage = (event: MessageEvent) => {
+    if ((event.data as { type?: string } | null)?.type === 'push-resubscribed') void resyncPush(lang())
+  }
+  navigator.serviceWorker.addEventListener('message', onMessage)
+  return () => navigator.serviceWorker.removeEventListener('message', onMessage)
 }
 
 function register(subscription: PushSubscription, lang: string) {

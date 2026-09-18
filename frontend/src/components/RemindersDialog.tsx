@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BellOff, BellRing, CalendarPlus, Copy, RefreshCw, Send, Share, Smartphone, SquarePlus } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import { disablePush, enablePush, isIos, isStandalone, pushOnHere, pushSupported, type PushStatus } from '../lib/push'
+import { disablePush, enablePush, isAndroid, isIos, isStandalone, pushOnHere, pushSupported, type PushStatus } from '../lib/push'
 import { useI18n } from '../i18n'
 import { Modal, Spinner } from './ui'
 import { useToast } from './Toast'
@@ -123,6 +123,8 @@ export function RemindersDialog({ open, onClose }: { open: boolean; onClose: () 
               </button>
               <span className="text-xs text-muted">{t('notify.devices', { n: status.data?.devices ?? 0 })}</span>
               {denied && <p className="w-full text-sm text-rose-700">{t('notify.deniedHelp')}</p>}
+              {/* Android phones shut background work down to save battery; this is where that is undone. */}
+              {here && isAndroid() && <p className="w-full rounded-xl bg-canvas p-2.5 text-xs text-muted">{t('notify.androidHint')}</p>}
             </div>
           )}
         </Section>

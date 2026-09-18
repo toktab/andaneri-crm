@@ -10,7 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** The words of a reminder, in Georgian or English: "17:00 · შეხვედრა · Bar X" / "Giorgi · +995 ... · notes". */
+/**
+ * The words of a reminder, in Georgian or English. The place is the headline - that is what a person
+ * recognises at a glance on a locked screen - and under it the hour, what kind of visit it is, and who
+ * they are meeting, then the number to ring and anything else worth carrying: "Bar X" / "17:00 ·
+ * Meeting · Giorgi · 599 60 70 80 · Chavchavadze 7".
+ */
 final class ReminderText {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
@@ -22,6 +27,7 @@ final class ReminderText {
             TaskType.SEND_PRICE_LIST, new String[] {"ფასების გაგზავნა", "Send price list"},
             TaskType.FOLLOW_UP, new String[] {"გადაკავშირება", "Follow up"},
             TaskType.CHECK_REORDER, new String[] {"ხელახალი შეკვეთა", "Check reorder"},
+            TaskType.DELIVERY, new String[] {"მიტანა", "Delivery"},
             TaskType.OTHER, new String[] {"სხვა", "Other"});
 
     private ReminderText() {
@@ -35,10 +41,12 @@ final class ReminderText {
         boolean en = "en".equals(lang);
         String when = t.isAllDay() ? (en ? "Today" : "დღეს") : TIME.format(t.getDueAt().atZone(zone));
         String what = TYPE.getOrDefault(t.getType(), TYPE.get(TaskType.OTHER))[en ? 1 : 0];
-        String who = t.getBusiness() != null ? t.getBusiness().getName() : t.getTitle();
-        String title = when + " · " + what + (who == null ? "" : " · " + who);
+        String where = t.getBusiness() != null ? t.getBusiness().getName() : t.getTitle();
+        // The name of the place is the headline; when there is none, the hour and the kind of visit are.
+        String title = where != null && !where.isBlank() ? where : when + " · " + what;
 
         List<String> body = new ArrayList<>();
+        body.add(when + " · " + what);
         if (t.getContact() != null) {
             body.add(t.getContact().getName());
         }
