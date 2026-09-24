@@ -72,7 +72,8 @@ public class ReportService {
     }
 
     public record UserRow(Long userId, String name, long calls, long callsReached, long visits, long meetings,
-            long newLeads, long newCustomers, long purchases, BigDecimal sales, BigDecimal bottles, long tasksDone) {
+            long samples, long newLeads, long newCustomers, long purchases, BigDecimal sales, BigDecimal bottles,
+            long tasksDone) {
     }
 
     public record ProductRow(Long productId, String nameKa, String nameEn, BigDecimal quantity, BigDecimal total) {
@@ -222,6 +223,7 @@ public class ReportService {
                             mine.stream().filter(a -> a.getType() == ActivityType.CALL && !NOT_REACHED.contains(a.getResult())).count(),
                             count(mine, ActivityType.VISIT),
                             count(mine, ActivityType.MEETING),
+                            count(mine, ActivityType.SAMPLES),
                             created.stream().filter(b -> b.getCreatedBy().getId().equals(u.getId())).count(),
                             becameCustomer.stream().filter(s -> s.getUser().getId().equals(u.getId())).count(),
                             mySales.size(),

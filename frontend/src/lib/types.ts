@@ -231,8 +231,9 @@ export interface Funnel {
   bottlesSold: number
 }
 export interface ReportUserRow {
-  userId: number; name: string; calls: number; callsReached: number; visits: number; meetings: number; newLeads: number
-  newCustomers: number; purchases: number; sales: number; bottles: number; tasksDone: number
+  userId: number; name: string; calls: number; callsReached: number; visits: number; meetings: number
+  samples: number; newLeads: number; newCustomers: number; purchases: number; sales: number; bottles: number
+  tasksDone: number
 }
 export interface ReportProductRow { productId: number | null; nameKa: string; nameEn: string; quantity: number; total: number }
 export interface FlavorRow { flavorId: number; nameKa: string; nameEn: string; count: number; quantity: number | null }

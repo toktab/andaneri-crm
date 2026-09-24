@@ -17,7 +17,8 @@ interface Where { userId: number; userName: string; businessId: number | null; b
 interface TeamRow {
   user: { id: number; fullName: string }
   role: string; active: boolean
-  calls: number; callsReached: number; visits: number; meetings: number; newLeads: number; newCustomers: number
+  calls: number; callsReached: number; visits: number; meetings: number; samples: number
+  newLeads: number; newCustomers: number
   purchases: number; sales: number; bottles: number; tasksDone: number
   lastActivityAt: string | null; lastLoginAt: string | null; nowOn: Where | null
 }
@@ -106,6 +107,7 @@ export function TeamPage() {
                 <th className="px-2 py-2">{t('reports.calls')}</th>
                 <th className="px-2 py-2">{t('reports.visits')}</th>
                 <th className="px-2 py-2">{t('reports.meetings')}</th>
+                <th className="px-2 py-2">{t('reports.samples')}</th>
                 <th className="px-2 py-2">{t('reports.newLeads')}</th>
                 <th className="px-2 py-2">{t('reports.newCustomers')}</th>
                 <th className="px-2 py-2">{t('reports.sales')}</th>
@@ -128,6 +130,7 @@ export function TeamPage() {
                   <td className="px-2 py-2 tabular-nums">{row.calls}<span className="text-xs text-muted"> / {row.callsReached}</span></td>
                   <td className="px-2 py-2 tabular-nums">{row.visits}</td>
                   <td className="px-2 py-2 tabular-nums">{row.meetings}</td>
+                  <td className="px-2 py-2 tabular-nums">{row.samples}</td>
                   <td className="px-2 py-2 tabular-nums">{row.newLeads}</td>
                   <td className="px-2 py-2 tabular-nums">{row.newCustomers}</td>
                   <td className="whitespace-nowrap px-2 py-2 tabular-nums">{money(row.sales)}</td>
@@ -201,6 +204,7 @@ function PersonDetail({ row, onClose }: { row: TeamRow; onClose: () => void }) {
           [t('reports.calls'), `${row.calls} / ${row.callsReached}`],
           [t('reports.visits'), String(row.visits)],
           [t('reports.meetings'), String(row.meetings)],
+          [t('reports.samples'), String(row.samples)],
           [t('reports.newLeads'), String(row.newLeads)],
           [t('reports.newCustomers'), String(row.newCustomers)],
           [t('reports.tasksDone'), String(row.tasksDone)],

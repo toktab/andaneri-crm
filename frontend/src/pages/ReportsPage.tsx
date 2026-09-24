@@ -175,8 +175,8 @@ function ReportBody({ r, show }: { r: Report; show: (s: Section) => boolean }) {
       {show('users') && (
         <Section title={t('reports.section.users')}>
           <Table
-            head={[t('reports.col.person'), t('reports.calls'), t('reports.col.reached'), t('reports.visits'), t('reports.meetings'), t('reports.newLeads'), t('reports.newCustomers'), t('reports.col.orders'), t('reports.col.bottles'), t('reports.sales'), t('reports.tasksDone')]}
-            rows={r.byUser.map((u) => [u.name, u.calls, u.callsReached, u.visits, u.meetings, u.newLeads, u.newCustomers, u.purchases, number(u.bottles), money(u.sales), u.tasksDone])}
+            head={[t('reports.col.person'), t('reports.calls'), t('reports.col.reached'), t('reports.visits'), t('reports.meetings'), t('reports.samples'), t('reports.newLeads'), t('reports.newCustomers'), t('reports.col.orders'), t('reports.col.bottles'), t('reports.sales'), t('reports.tasksDone')]}
+            rows={r.byUser.map((u) => [u.name, u.calls, u.callsReached, u.visits, u.meetings, u.samples, u.newLeads, u.newCustomers, u.purchases, number(u.bottles), money(u.sales), u.tasksDone])}
           />
         </Section>
       )}

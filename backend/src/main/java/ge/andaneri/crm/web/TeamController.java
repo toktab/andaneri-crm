@@ -37,7 +37,8 @@ public class TeamController {
 
     /** One person's period: what they did, where they are, when they were last seen. */
     public record TeamRow(UserRef user, String role, boolean active, long calls, long callsReached, long visits,
-            long meetings, long newLeads, long newCustomers, long purchases, java.math.BigDecimal sales, long bottles,
+            long meetings, long samples, long newLeads, long newCustomers, long purchases, java.math.BigDecimal sales,
+            long bottles,
             long tasksDone, Instant lastActivityAt, Instant lastLoginAt, PresenceService.Where nowOn) {
     }
 
@@ -82,7 +83,8 @@ public class TeamController {
             ReportService.UserRow row = numbers.get(person.getId());
             rows.add(new TeamRow(UserRef.of(person), person.getRole().name(), person.isActive(),
                     row == null ? 0 : row.calls(), row == null ? 0 : row.callsReached(), row == null ? 0 : row.visits(),
-                    row == null ? 0 : row.meetings(), row == null ? 0 : row.newLeads(), row == null ? 0 : row.newCustomers(),
+                    row == null ? 0 : row.meetings(), row == null ? 0 : row.samples(),
+                    row == null ? 0 : row.newLeads(), row == null ? 0 : row.newCustomers(),
                     row == null ? 0 : row.purchases(), row == null ? java.math.BigDecimal.ZERO : row.sales(),
                     row == null ? 0 : row.bottles().longValue(), row == null ? 0 : row.tasksDone(),
                     activities.lastOccurredAt(person.getId()), person.getLastLoginAt(), presence.of(person.getId())));
