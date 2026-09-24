@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Bell, Check, MessageSquare, RotateCcw, Store, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useMode } from '../lib/mode'
-import { keys, useNotes, useRefreshWork } from '../lib/queries'
+import { useNotes, useRefreshWork } from '../lib/queries'
 import { fmtDateTime } from '../lib/format'
 import type { NoteDto } from '../lib/types'
 import { useI18n } from '../i18n'
@@ -18,14 +18,14 @@ export function NotesPage() {
   const toast = useToast()
   const queryClient = useQueryClient()
   const refresh = useRefreshWork()
-  const { canEdit } = useMode()
-  const notes = useNotes()
+  const { canEdit, asUserId, viewAs } = useMode()
+  const notes = useNotes(asUserId)
   const [body, setBody] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [attaching, setAttaching] = useState<NoteDto | null>(null)
   const editable = canEdit()
 
-  const reload = () => queryClient.invalidateQueries({ queryKey: keys.notes })
+  const reload = () => queryClient.invalidateQueries({ queryKey: ['notes'] })
   const run = async (action: () => Promise<unknown>) => {
     try {
       await action()
@@ -52,8 +52,8 @@ export function NotesPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        title={t('notes.title')}
-        subtitle={t('notes.private')}
+        title={viewAs ? t('team.theirNotes', { name: viewAs.fullName }) : t('notes.title')}
+        subtitle={viewAs ? undefined : t('notes.private')}
         actions={
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="size-4 accent-brand-600" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> {t('notes.showDone')}

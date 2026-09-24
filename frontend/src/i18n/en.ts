@@ -289,7 +289,8 @@ export const en: Dict = {
     rightNow: 'Working right now', nobodyNow: 'Nobody is in the app right now', isOn: 'is on', isInApp: 'in the CRM',
     since: 'since {at}', lastSeen: 'Last activity', lastLogin: 'Last sign-in',
     viewAs: 'Through their eyes', viewingAs: 'Viewing as {name} - read only', stopViewing: 'Stop',
-    whatTheyDid: 'What they did', theirPlan: 'Their plan', addedBy: 'Added by', callingNow: '{name} is on this business right now',
+    whatTheyDid: 'What they did', theirPlan: 'Their plan', addedBy: 'Added by',
+    theirHistory: '{name}: history', theirNotes: '{name}: notes', callingNow: '{name} is on this business right now',
   },
   calendar: { title: 'Calendar', month: 'Month', week: 'Week', day: 'Day', agenda: 'List', newEvent: 'New', today: 'Today', mine: 'Mine', everyone: 'Everyone' },
   tasks: {

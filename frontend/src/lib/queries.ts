@@ -16,7 +16,7 @@ export const keys = {
   purchases: (id: number) => ['purchases', id] as const,
   tasks: (params: Params) => ['tasks', params] as const,
   overdue: (userId: number | null) => ['overdue', userId] as const,
-  notes: ['notes'] as const,
+  notes: (userId: number | null = null) => ['notes', userId] as const,
   report: (params: Params) => ['report', params] as const,
   workspace: ['workspace'] as const,
   grid: (params: Params) => ['grid', params] as const,
@@ -55,7 +55,9 @@ export const useTasks = (params: Params, enabled = true) =>
 export const useOverdue = (userId: number | null) =>
   useQuery({ queryKey: keys.overdue(userId), queryFn: () => api.get<TaskDto[]>('/tasks/overdue', { userId }) })
 
-export const useNotes = () => useQuery({ queryKey: keys.notes, queryFn: () => api.get<NoteDto[]>('/notes') })
+/** {@code userId}: whose notes - set while a supervisor is looking through someone's eyes. */
+export const useNotes = (userId: number | null = null) =>
+  useQuery({ queryKey: keys.notes(userId), queryFn: () => api.get<NoteDto[]>('/notes', userId ? { userId } : {}) })
 
 export const useReport = (params: Params) =>
   useQuery({ queryKey: keys.report(params), queryFn: () => api.get<Report>('/reports', params), placeholderData: (previous) => previous })

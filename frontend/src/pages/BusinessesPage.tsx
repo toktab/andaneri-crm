@@ -21,7 +21,7 @@ export function BusinessesPage() {
   const { t, lang, name } = useI18n()
   const toast = useToast()
   const { user } = useAuth()
-  const { canEdit } = useMode()
+  const { canEdit, asUserId, viewAs } = useMode()
   const lookups = useLookups()
   const [search, setSearch] = useSearchParams()
   const [text, setText] = useState(search.get('q') ?? '')
@@ -158,9 +158,10 @@ export function BusinessesPage() {
                 }}
               >
                 <option value="">{t('common.all')}</option>
-                {user && <option value={user.id}>{t('common.me')}</option>}
+                {/* "Me" is whoever's eyes these are. */}
+                {user && <option value={asUserId ?? user.id}>{viewAs ? viewAs.fullName : t('common.me')}</option>}
                 <option value="none">{t('common.unassigned')}</option>
-                {lookups.data?.users.filter((u) => u.id !== user?.id).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                {lookups.data?.users.filter((u) => u.id !== (asUserId ?? user?.id)).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
               </select>
             </Field>
             <Field label={t('common.priority')}>

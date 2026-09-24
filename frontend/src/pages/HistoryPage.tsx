@@ -4,6 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { Clock, Pencil, Plus, Trash } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useMode } from '../lib/mode'
 import { fmtDateTime, fmtTime, fmtWeekday } from '../lib/format'
 import { useLookups } from '../lib/queries'
 import type { HistoryItem, HistoryPage as Page, Lookups } from '../lib/types'
@@ -20,8 +21,12 @@ type T = (key: string, vars?: Record<string, string | number>) => string
 export function HistoryPage() {
   const { t, lang } = useI18n()
   const { user, isSupervisor } = useAuth()
+  const { asUserId, viewAs } = useMode()
   const lookups = useLookups()
-  const [userId, setUserId] = useState<number | null>(null)
+  // While looking through someone's eyes the list is theirs and the picker follows, rather than
+  // quietly showing your own day under their name.
+  const [picked, setPicked] = useState<number | null>(null)
+  const userId = asUserId ?? picked
   const history = useInfiniteQuery({
     queryKey: ['history', userId],
     queryFn: ({ pageParam }) => api.get<Page>('/history', { userId, page: pageParam, size: 60 }),
@@ -47,10 +52,11 @@ export function HistoryPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader
-        title={t('history.title')}
-        subtitle={t('history.subtitle')}
+        title={viewAs ? t('team.theirHistory', { name: viewAs.fullName }) : t('history.title')}
+        subtitle={viewAs ? undefined : t('history.subtitle')}
         actions={isSupervisor && (
-          <select className="input w-auto max-w-full" value={userId ?? ''} onChange={(e) => setUserId(e.target.value ? Number(e.target.value) : null)}>
+          <select className="input w-auto max-w-full" value={userId ?? ''} disabled={asUserId !== null}
+            onChange={(e) => setPicked(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{user?.fullName} ({t('common.me')})</option>
             {lookups.data?.users.filter((u) => u.id !== user?.id).map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
           </select>

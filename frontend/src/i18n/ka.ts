@@ -290,7 +290,8 @@ export const ka = {
     rightNow: 'ახლა მუშაობენ', nobodyNow: 'ახლა არავინ არის ჩართული', isOn: 'ახლა აქ არის:', isInApp: 'CRM-ში',
     since: 'დან: {at}', lastSeen: 'ბოლო აქტივობა', lastLogin: 'ბოლო შესვლა',
     viewAs: 'მისი თვალით', viewingAs: 'ხედავთ როგორც: {name} — მხოლოდ ნახვა', stopViewing: 'დასრულება',
-    whatTheyDid: 'რა გააკეთა', theirPlan: 'მისი დაგეგმილი', addedBy: 'დაამატა', callingNow: '{name} ახლა ამ ბიზნესშია',
+    whatTheyDid: 'რა გააკეთა', theirPlan: 'მისი დაგეგმილი', addedBy: 'დაამატა',
+    theirHistory: '{name}: ისტორია', theirNotes: '{name}: ჩანაწერები', callingNow: '{name} ახლა ამ ბიზნესშია',
   },
   calendar: { title: 'კალენდარი', month: 'თვე', week: 'კვირა', day: 'დღე', agenda: 'სია', newEvent: 'ახალი', today: 'დღეს', mine: 'ჩემი', everyone: 'ყველას' },
   tasks: {

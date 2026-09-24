@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { keys } from '../lib/queries'
 import { fromLocalInput } from '../lib/format'
 import { useI18n } from '../i18n'
 import { BusinessSelect, type BusinessPick } from './BusinessSelect'
@@ -31,7 +30,7 @@ export function NoteDialog({ open, onClose, business }: { open: boolean; onClose
     setSaving(true)
     try {
       await api.post('/notes', { body, businessId: pick?.id ?? null, remindAt: fromLocalInput(remindAt) })
-      queryClient.invalidateQueries({ queryKey: keys.notes })
+      queryClient.invalidateQueries({ queryKey: ['notes'] })
       toast.ok(t('common.saved'))
       onClose()
     } catch (error) {
