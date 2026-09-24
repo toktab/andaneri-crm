@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
+    /** When this person last wrote anything down: the supervisor's "last at work" column. */
+    @Query("select max(a.occurredAt) from Activity a where a.user.id = :userId")
+    java.time.Instant lastOccurredAt(Long userId);
+
     @Query("select a from Activity a join fetch a.user left join fetch a.contact where a.business.id = :businessId order by a.occurredAt desc, a.id desc")
     List<Activity> findForBusiness(Long businessId);
 

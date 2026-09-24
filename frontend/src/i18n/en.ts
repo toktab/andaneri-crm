@@ -5,7 +5,7 @@ export const en: Dict = {
   nav: {
     today: 'Today', calls: 'Calls', businesses: 'Businesses', pipeline: 'Pipeline', calendar: 'Calendar',
     tasks: 'Tasks', notes: 'Notes', products: 'Products', reports: 'Reports', import: 'Import / export',
-    admin: 'Admin', more: 'More', start: 'Start', flavors: 'Flavors', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
+    admin: 'Admin', more: 'More', start: 'Start', flavors: 'Flavors', team: 'Team', search: 'Search (Ctrl + K)', main: 'Main', security: 'Security', history: 'My history',
   },
   install: { title: 'Add the CRM to your Home Screen', hint: 'It opens like an app, full screen, and reminders can reach you.', button: 'Add' },
   notify: {
@@ -278,9 +278,18 @@ export const en: Dict = {
     pick: 'Business', pickHint: 'Pick a business to see everything about its flavors',
     boughtSyrups: 'Syrups (bought)', otherBought: 'Other bought (puree, sauce...)',
     noneFresh: 'No fresh in use (or not asked yet)', noneHouse: 'Nothing house-made (or not asked yet)',
+    haveNow: '1. What they have / pour now', interestedIn: '2. What they asked about', bringing: '3. What we bring',
+    bringingHint: 'What they use plus what they asked about - add anything else to make the visit interesting',
     alreadyLeft: 'Already left with them', testers: 'Tester bottles (100 ml)',
     testersHint: 'Tick what goes in the bag', inBag: 'In the bag: {n}', copyList: 'Copy the list',
     planDelivery: 'Plan the delivery', planned: 'Delivery planned',
+  },
+  team: {
+    title: 'Team', subtitle: 'Who did what, who is working where right now, and whose screens you want to look through',
+    rightNow: 'Working right now', nobodyNow: 'Nobody is in the app right now', isOn: 'is on', isInApp: 'in the CRM',
+    since: 'since {at}', lastSeen: 'Last activity', lastLogin: 'Last sign-in',
+    viewAs: 'Through their eyes', viewingAs: 'Viewing as {name} - read only', stopViewing: 'Stop',
+    whatTheyDid: 'What they did', theirPlan: 'Their plan', addedBy: 'Added by', callingNow: '{name} is on this business right now',
   },
   calendar: { title: 'Calendar', month: 'Month', week: 'Week', day: 'Day', agenda: 'List', newEvent: 'New', today: 'Today', mine: 'Mine', everyone: 'Everyone' },
   tasks: {
@@ -306,6 +315,7 @@ export const en: Dict = {
     ownBrand: 'Our brand', addBrand: 'Add brand', addFlavor: 'Add flavor', packSize: 'Size',
     filter: 'Filter...', priceList: 'Price list', usedBy: 'used by {n} businesses',
   },
+  market: { brands: 'Which brands they use', flavorsOf: '{category}: which flavors they use', ownToo: 'Count ours too' },
   reports: {
     title: 'Reports', period: 'Period', thisWeek: 'This week', thisMonth: 'This month', lastMonth: 'Last month', last30: 'Last 30 days',
     last90: 'Last 90 days', thisYear: 'This year', person: 'Person', sections: 'Show', exportXlsx: 'Excel', exportJson: 'JSON',
@@ -386,6 +396,12 @@ export const en: Dict = {
       backup_reminder: 'Remind admins to make backups',
     },
     auditEntity: 'Object', auditAction: 'Action',
+    blockedIps: 'Blocked addresses',
+    blockedIpsHint: 'An address is blocked automatically after repeated wrong passwords. If this is your own office, lift it here.',
+    blockCoversYou: 'This is your address',
+    blockAutomatic: 'Automatic',
+    liftBlock: 'Lift',
+    blockLifted: 'Block lifted',
     customFields: 'Extra fields', addField: 'Add field', fieldName: 'Name of the new field',
     noCustomFields: 'No extra fields yet. They are added while importing Excel, or here.',
     rootLocked: 'The root account is managed by environment variables (ROOT_USERNAME, ROOT_PASSWORD).',

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileSpreadsheet, Plus, RotateCcw, Trash, Upload } from 'lucide-react'
+import { Download, FileSpreadsheet, Plus, RotateCcw, ShieldOff, Trash, Upload } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { keys, useLookups } from '../lib/queries'
 import { fmtDateTime } from '../lib/format'
@@ -23,6 +23,10 @@ interface BackupOverview { status: BackupStatus; backups: BackupInfo[]; log: Bac
 interface RestoreResult {
   dryRun: boolean; users: number; usersNeedingPassword: string[]; projects: number; sheets: number; customFields: number
   brands: number; flavors: number; products: number; businesses: number; notes: number; settings: number
+}
+interface IpBlock {
+  id: number; pattern: string; note: string | null; automatic: boolean
+  createdAt: string; expiresAt: string | null; coversYou: boolean
 }
 const ROLES: Role[] = ['SALES', 'SUPERVISOR', 'ADMIN']
 
@@ -250,7 +254,9 @@ function SettingsTab() {
   }
 
   return (
-    <div className="card max-w-xl space-y-3 p-4">
+    <div className="max-w-xl space-y-4">
+      <IpBlocksCard />
+      <div className="card space-y-3 p-4">
       {Object.keys(values).map((key) => SWITCH_SETTINGS.has(key) ? (
         <label key={key} className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="size-4 accent-brand-600" checked={values[key] === 1} onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.checked ? 1 : 0 }))} />
@@ -262,6 +268,53 @@ function SettingsTab() {
         </Field>
       ))}
       <button type="button" className="btn-primary" onClick={() => void save()}>{t('common.save')}</button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The addresses the guard is currently turning away. Ten wrong passwords from one office used to lock
+ * everyone in it out with nobody able to undo it; now an admin sees the block here and lifts it in a click,
+ * and the line that covers this very computer is marked, because that is the one doing the damage.
+ */
+function IpBlocksCard() {
+  const { t, lang } = useI18n()
+  const toast = useToast()
+  const queryClient = useQueryClient()
+  const blocks = useQuery({ queryKey: ['ip-blocks'], queryFn: () => api.get<IpBlock[]>('/admin/ip-blocks') })
+
+  const lift = async (id: number) => {
+    try {
+      await api.del(`/admin/ip-blocks/${id}`)
+      queryClient.invalidateQueries({ queryKey: ['ip-blocks'] })
+      toast.ok(t('admin.blockLifted'))
+    } catch (error) {
+      toast.error(error)
+    }
+  }
+
+  if (blocks.isLoading || (blocks.data ?? []).length === 0) return null
+  return (
+    <div className="card space-y-2 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-700">
+        <ShieldOff className="size-4" /> {t('admin.blockedIps')}
+      </h3>
+      <p className="text-xs text-muted">{t('admin.blockedIpsHint')}</p>
+      <ul className="divide-y divide-line">
+        {(blocks.data ?? []).map((b) => (
+          <li key={b.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+            <span className="font-mono text-xs">{b.pattern}</span>
+            {b.coversYou && <span className="chip border-rose-300 bg-rose-50 text-xs text-rose-800">{t('admin.blockCoversYou')}</span>}
+            {b.automatic && <span className="chip border-line text-xs text-muted">{t('admin.blockAutomatic')}</span>}
+            <span className="text-xs text-muted">{fmtDateTime(b.createdAt, lang)}</span>
+            {b.note && <span className="truncate text-xs text-muted">{b.note}</span>}
+            <button type="button" className="btn-secondary ml-auto px-2 py-1 text-xs" onClick={() => void lift(b.id)}>
+              {t('admin.liftBlock')}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

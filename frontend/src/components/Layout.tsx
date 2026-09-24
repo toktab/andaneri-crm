@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   ArrowDownUp, Bell, CalendarDays, CalendarPlus, ChartColumn, Clock, Eye, EyeOff, FlaskConical, House, KeyRound, LayoutGrid, ListChecks, LogOut, Menu, Monitor, Moon,
+  Users,
   Package, PenLine, Phone, Plus, Search, Settings, ShieldCheck, SquareKanban, StickyNote, Store, Sun, X,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -44,10 +45,10 @@ const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: '
 
 export function Layout() {
   const { t, lang, setLang } = useI18n()
-  const { user, isAdmin, isRoot, logout } = useAuth()
+  const { user, isAdmin, isRoot, isSupervisor, logout } = useAuth()
   const theme = useTheme()
   const ThemeIcon = theme.choice === 'system' ? Monitor : theme.choice === 'dark' ? Moon : Sun
-  const { observe, setObserve } = useMode()
+  const { observe, setObserve, viewAs, setViewAs, canEdit } = useMode()
   const location = useLocation()
   const [searchOpen, setSearchOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -97,6 +98,7 @@ export function Layout() {
 
   const nav = [
     ...NAV,
+    ...(isSupervisor ? [{ to: '/team', key: 'team', icon: Users }] : []),
     ...(isAdmin ? [{ to: '/admin', key: 'admin', icon: Settings }] : []),
     ...(isRoot ? [{ to: '/security', key: 'security', icon: ShieldCheck }] : []),
   ]
@@ -151,7 +153,7 @@ export function Layout() {
               <span className="truncate">{t('nav.search')}</span>
             </button>
             <div className="ml-auto flex items-center gap-1">
-              {!observe && (
+              {canEdit() && (
                 <button type="button" className="btn-primary px-2.5 sm:px-3.5" onClick={() => setAddOpen(true)} title={t('business.new')}>
                   <Plus className="size-4" /> <span className="hidden sm:inline">{t('business.new')}</span>
                 </button>
@@ -185,6 +187,12 @@ export function Layout() {
               />
             </div>
           </div>
+          {viewAs && (
+            <div className="flex flex-wrap items-center justify-center gap-3 bg-brand-600 px-4 py-1.5 text-xs font-medium text-white">
+              <Eye className="size-3.5" /> {t('team.viewingAs', { name: viewAs.fullName })}
+              <button type="button" className="font-semibold underline" onClick={() => setViewAs(null)}>{t('team.stopViewing')}</button>
+            </div>
+          )}
           {observe && (
             <div className="flex items-center justify-center gap-3 bg-amber-100 px-4 py-1.5 text-xs text-amber-900">
               <Eye className="size-3.5" /> {t('common.observeBanner')}
@@ -204,7 +212,7 @@ export function Layout() {
       </div>
 
       {/* Start something, one tap from anywhere */}
-      {!observe && (
+      {canEdit() && (
         <button
           type="button"
           onClick={() => { tap(); setActionsOpen(true) }}

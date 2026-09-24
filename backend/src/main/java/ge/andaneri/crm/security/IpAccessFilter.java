@@ -14,8 +14,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Turns away blocked addresses, and while the whitelist is on, every address not on it. The machine
- * itself (127.0.0.1, ::1) is never turned away. Root keeps access from anywhere unless
- * ROOT_BYPASS_WHITELIST is false, so switching the whitelist on can never lock the last admin out.
+ * itself (127.0.0.1, ::1) is never turned away, and neither is signing in: a blocked address must still
+ * be able to reach the sign-in, where the key accounts are let through. Root and the first admin keep
+ * access from anywhere, so a block can never shut out the person who can lift it.
  */
 public class IpAccessFilter extends OncePerRequestFilter {
 
@@ -39,7 +40,8 @@ public class IpAccessFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String ip = ClientIp.of(request);
         if (!ClientIp.isLoopback(ip)) {
-            if (rules.blocked(ip)) {
+            boolean signingIn = request.getRequestURI().equals("/api/auth/login");
+            if (rules.blocked(ip) && !signingIn && !hasRole(request, "ADMIN", "ROOT")) {
                 deny(response, "IP_BLOCKED");
                 return;
             }
@@ -53,14 +55,27 @@ public class IpAccessFilter extends OncePerRequestFilter {
     }
 
     private boolean isRoot(HttpServletRequest request) {
+        return properties.rootBypassWhitelist() && hasRole(request, "ROOT");
+    }
+
+    /** Whether the request carries a good token for one of these roles. */
+    private boolean hasRole(HttpServletRequest request, String... wanted) {
         String header = request.getHeader("Authorization");
-        if (!properties.rootBypassWhitelist() || header == null || !header.startsWith("Bearer ")) {
+        if (header == null || !header.startsWith("Bearer ")) {
             return false;
         }
         try {
             Jwt jwt = jwtDecoder.decode(header.substring(7));
             List<String> roles = jwt.getClaimAsStringList("roles");
-            return roles != null && roles.contains("ROOT");
+            if (roles == null) {
+                return false;
+            }
+            for (String role : wanted) {
+                if (roles.contains(role)) {
+                    return true;
+                }
+            }
+            return false;
         } catch (JwtException ex) {
             return false;
         }

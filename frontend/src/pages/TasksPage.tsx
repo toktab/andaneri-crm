@@ -24,14 +24,14 @@ function startOfDay(offset: number): Date {
 export function TasksPage() {
   const { t, lang } = useI18n()
   const { user } = useAuth()
-  const { canEdit } = useMode()
+  const { canEdit, asUserId } = useMode()
   const toast = useToast()
   const refresh = useRefreshWork()
   const lookups = useLookups()
   const [tab, setTab] = useState<Tab>('today')
   const [who, setWho] = useState<string>('me')
   const [open, setOpen] = useState<TaskDto | 'new' | null>(null)
-  const userId = who === 'me' ? user?.id ?? null : who === 'all' ? null : Number(who)
+  const userId = asUserId ?? (who === 'me' ? user?.id ?? null : who === 'all' ? null : Number(who))
   const editable = canEdit()
 
   const overdue = useOverdue(userId)

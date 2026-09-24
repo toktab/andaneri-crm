@@ -4,6 +4,7 @@ import {
   ArrowLeft, CalendarPlus, Clock, FlaskConical, FileSpreadsheet, Globe, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShoppingCart, Sparkles, Star, StickyNote,
   ThumbsDown, ThumbsUp, User, X,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMode } from '../lib/mode'
@@ -48,6 +49,12 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
   const { canEdit } = useMode()
   const lookups = useLookups()
   const timeline = useTimeline(b.id)
+  // Refreshed while the file is open: presence is only ever about this minute.
+  const whoIsHere = useQuery({
+    queryKey: ['who-is-here', b.id],
+    queryFn: () => api.get<{ others: { userId: number; userName: string }[] }>(`/businesses/${b.id}/who-is-here`),
+    refetchInterval: 30_000,
+  })
   const [search, setSearch] = useSearchParams()
   const [tab, setTab] = useState<Tab>('summary')
   const [log, setLog] = useState<{ type: ActivityType; task: TaskDto | null } | null>(null)
@@ -135,6 +142,7 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
               )}
               {(b.address || b.district) && <span>{[b.address, b.district, b.city].filter(Boolean).join(', ')}</span>}
               <span className="inline-flex items-center gap-1"><User className="size-3.5" /> {b.assignedTo?.fullName ?? t('common.unassigned')}</span>
+              {b.createdBy && <span className="text-xs">{t('team.addedBy')}: {b.createdBy.fullName}</span>}
               {!b.assignedTo && !isSupervisor && editable && (
                 <button type="button" className="text-xs font-medium text-brand-700 underline" onClick={() => void claim()}>{t('business.claim')}</button>
               )}
@@ -177,6 +185,14 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
             </>
           )}
         </div>
+      )}
+
+      {/* A colleague already has this one open: better to know before ringing it twice. */}
+      {(whoIsHere.data?.others ?? []).length > 0 && (
+        <p className="mb-3 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-1.5 text-sm text-emerald-900">
+          <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+          {t('team.callingNow', { name: (whoIsHere.data?.others ?? []).map((w) => w.userName).join(', ') })}
+        </p>
       )}
 
       <Tabs<Tab>

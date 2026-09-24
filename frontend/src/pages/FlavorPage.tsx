@@ -78,8 +78,12 @@ function FlavorBoard({ b }: { b: BusinessDetail }) {
   const samples = (timeline.data ?? []).filter((item) => item.kind === 'ACTIVITY'
     && (item.type === 'SAMPLES' || (item.results ?? []).some((r) => r.startsWith('SAMPLES'))))
 
-  // The bag: what they asked for and has not been planned yet, until it is changed by hand.
-  const suggested = wanted.map((i) => i.flavor?.id).filter((x) => x !== undefined).filter((x) => !delivered.has(x))
+  // The bag: what they pour today and what they asked about, minus whatever is already on its way.
+  // Add anything else by hand - that is where a flavor they have not thought of gets into the case.
+  const suggested = [...new Set([
+    ...b.usages.map((u) => u.flavor?.id),
+    ...wanted.map((i) => i.flavor?.id),
+  ])].filter((x) => x !== undefined).filter((x) => !delivered.has(x))
   const bag = picked ?? suggested
   const toggle = (flavorId: number) => {
     tap()
@@ -121,6 +125,7 @@ function FlavorBoard({ b }: { b: BusinessDetail }) {
         <StatusBadge status={b.status} />
       </div>
 
+      <h2 className="px-1 pt-1 text-sm font-bold uppercase tracking-wide text-muted">{t('flavors.haveNow')}</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <Card title={t('flavors.boughtSyrups')} tone="text-brand-700">
           <UsageList rows={syrups} empty={t('business.none')} />
@@ -136,6 +141,7 @@ function FlavorBoard({ b }: { b: BusinessDetail }) {
         </Card>
       </div>
 
+      <h2 className="px-1 pt-2 text-sm font-bold uppercase tracking-wide text-muted">{t('flavors.interestedIn')}</h2>
       <Card title={t('business.whatTheyWant')}>
         {wanted.length === 0 ? <p className="px-1 text-sm text-muted">{t('business.none')}</p> : (
           <ul className="space-y-1.5 px-1">
@@ -166,9 +172,10 @@ function FlavorBoard({ b }: { b: BusinessDetail }) {
       )}
 
       {/* The bag itself: tick what goes in, then plan the delivery that carries it. */}
+      <h2 className="px-1 pt-2 text-sm font-bold uppercase tracking-wide text-muted">{t('flavors.bringing')}</h2>
       <section className="card border-brand-200 p-3">
         <h2 className="mb-1 flex items-center gap-2 px-1 text-sm font-semibold text-brand-700">
-          <FlaskConical className="size-4" /> {t('flavors.testers')} <span className="text-xs font-normal text-muted">{t('flavors.testersHint')}</span>
+          <FlaskConical className="size-4" /> {t('flavors.testers')} <span className="text-xs font-normal text-muted">{t('flavors.bringingHint')}</span>
         </h2>
         <div className="flex flex-wrap gap-1.5 px-1 py-2">
           {(lookups.data?.flavors ?? []).filter((f) => f.active).map((f: FlavorDto) => {

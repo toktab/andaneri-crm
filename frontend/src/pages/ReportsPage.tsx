@@ -6,12 +6,13 @@ import { useLookups, useReport } from '../lib/queries'
 import { money, number } from '../lib/format'
 import type { FlavorRow, Report } from '../lib/types'
 import { STATUSES } from '../lib/types'
+import { MarketSummary } from '../components/MarketSummary'
 import { useI18n } from '../i18n'
 import { Choice, EmptyState, ErrorBlock, Field, Loading, PageHeader, STATUS_STYLE, Stat } from '../components/ui'
 import { useToast } from '../components/Toast'
 
 type Preset = 'thisWeek' | 'thisMonth' | 'lastMonth' | 'last30' | 'last90' | 'thisYear' | 'custom'
-const SECTIONS = ['summary', 'funnel', 'users', 'products', 'flavorsSold', 'flavorsWanted', 'flavorsLiked', 'flavorsDisliked', 'marketBrands', 'marketFlavors', 'types', 'districts', 'pipeline'] as const
+const SECTIONS = ['summary', 'funnel', 'users', 'products', 'flavorsSold', 'flavorsWanted', 'flavorsLiked', 'flavorsDisliked', 'marketBrands', 'types', 'districts', 'pipeline'] as const
 type Section = (typeof SECTIONS)[number]
 const STORAGE_KEY = 'andaneri.reportSections'
 
@@ -208,12 +209,7 @@ function ReportBody({ r, show }: { r: Report; show: (s: Section) => boolean }) {
         )}
         {show('marketBrands') && (
           <Section title={t('reports.section.marketBrands')}>
-            <BarList rows={r.marketBrands.map((b) => ({ label: b.own ? `${b.name} (${t('reports.ours')})` : b.name, value: b.businesses, highlight: b.own }))} />
-          </Section>
-        )}
-        {show('marketFlavors') && (
-          <Section title={t('reports.section.marketFlavors')}>
-            <BarList rows={r.marketFlavors.slice(0, 20).map((f) => ({ label: flavorLabel(f), value: f.count }))} />
+            <MarketSummary />
           </Section>
         )}
         {show('types') && (

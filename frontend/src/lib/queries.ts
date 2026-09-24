@@ -28,8 +28,14 @@ export const useLookups = () =>
 export const useProducts = () =>
   useQuery({ queryKey: keys.products, queryFn: () => api.get<ProductDto[]>('/products'), staleTime: 5 * 60_000 })
 
-export const useDashboard = (scope: 'mine' | 'team', enabled = true) =>
-  useQuery({ queryKey: keys.dashboard(scope), queryFn: () => api.get<Dashboard>('/dashboard', { scope }), refetchInterval: 5 * 60_000, enabled })
+/** {@code scope}: 'mine', 'team', or a user id while a supervisor is looking through someone's eyes. */
+export const useDashboard = (scope: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.dashboard(scope),
+    queryFn: () => api.get<Dashboard>('/dashboard', /^\d+$/.test(scope) ? { userId: scope } : { scope }),
+    refetchInterval: 5 * 60_000,
+    enabled,
+  })
 
 export const useBusinesses = (params: Params) =>
   useQuery({ queryKey: keys.businesses(params), queryFn: () => api.get<PageDto<BusinessSummary>>('/businesses', params), placeholderData: (previous) => previous })

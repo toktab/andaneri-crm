@@ -89,28 +89,34 @@ class WorkspaceAndSecurityTest {
     }
 
     @Test
-    void tooManyFailuresBlockTheAddressUntilRootLiftsIt() throws Exception {
+    void guessingAtNamesBlocksTheAddressUntilRootLiftsIt() throws Exception {
         String root = login("root", "root-test-password", "127.0.0.1");
         String admin = login("admin", "test-admin-password", "127.0.0.1");
         String ip = "10.2.2.2";
+        // Someone trying names that do not exist is what blocks an address. A colleague fumbling their
+        // own password does not - see OfficeLockoutTest - because that would take the whole office down.
         for (int i = 0; i < 10; i++) {
             int status = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"username\":\"nobody\",\"password\":\"guess" + i + "\"}").with(from(ip)))
                     .andReturn().getResponse().getStatus();
             assertThat(status).isEqualTo(401);
         }
-        // The tenth failure blocked the address: from there on nothing gets through, not even a valid token.
-        MvcResult blocked = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"admin\",\"password\":\"test-admin-password\"}").with(from(ip))).andReturn();
-        assertThat(blocked.getResponse().getStatus()).isEqualTo(403);
-        assertThat(blocked.getResponse().getContentAsString()).contains("IP_BLOCKED");
-        call(admin, get("/api/lookups").with(from(ip)), 403);
+
+        // From there on an ordinary account gets nothing through from that address.
+        call(admin, post("/api/admin/users").content("""
+                {"username":"far-seller","fullName":"Far Seller","role":"SALES","password":"seller-pass-7"}"""), 200);
+        String seller = login("far-seller", "seller-pass-7", "127.0.0.1");
+        call(seller, get("/api/lookups").with(from(ip)), 403);
+
+        // The key accounts still do, from that very address - otherwise nobody would be left to lift it.
+        assertThat(login("admin", "test-admin-password", ip)).isNotBlank();
+        call(admin, get("/api/lookups").with(from(ip)), 200);
 
         String rules = call(root, get("/api/root/ip-rules"), 200);
         List<Integer> blocks = JsonPath.read(rules, "$[?(@.pattern == '10.2.2.2' && @.kind == 'BLOCK')].id");
         assertThat(blocks).hasSize(1);
         call(root, delete("/api/root/ip-rules/" + blocks.get(0)), 204);
-        call(admin, get("/api/lookups").with(from(ip)), 200);
+        call(seller, get("/api/lookups").with(from(ip)), 200);
     }
 
     @Test

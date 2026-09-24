@@ -50,9 +50,12 @@ public class AuthController {
     private final SecurityLog securityLog;
     private final IpRules ipRules;
     private final SettingsService settings;
+    private final ProtectedAccounts protectedAccounts;
 
     public AuthController(UserRepository users, PasswordEncoder passwordEncoder, JwtEncoder jwtEncoder,
-            CrmProperties properties, CurrentUser currentUser, SecurityLog securityLog, IpRules ipRules, SettingsService settings) {
+            CrmProperties properties, CurrentUser currentUser, SecurityLog securityLog, IpRules ipRules, SettingsService settings,
+            ProtectedAccounts protectedAccounts) {
+        this.protectedAccounts = protectedAccounts;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
@@ -83,10 +86,20 @@ public class AuthController {
         int lockMinutes = settings.getInt(SettingsService.LOCK_MINUTES);
         Instant window = Instant.now().minus(Duration.ofMinutes(lockMinutes));
 
-        if (!local && securityLog.failuresSince(ip, window) >= maxFailures) {
-            ipRules.autoBlock(ip, lockMinutes, maxFailures + " failed sign-ins");
-            securityLog.login(username, null, false, "RATE_LIMITED", null, ip, agent);
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS");
+        // The first admin and root are never slowed down and never block anything: they are the way back in.
+        boolean keyAccount = protectedAccounts.isProtected(username);
+        if (!local && !keyAccount) {
+            if (securityLog.unknownAccountFailuresSince(ip, window) >= maxFailures) {
+                // Names that do not exist, over and over: someone is guessing. That blocks the address.
+                ipRules.autoBlock(ip, lockMinutes, maxFailures + " sign-ins for unknown accounts");
+                securityLog.login(username, null, false, "RATE_LIMITED", null, ip, agent);
+                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS");
+            }
+            if (securityLog.failuresSince(ip, window, username) >= maxFailures) {
+                // A colleague fumbling their own password: only that account waits, the office keeps working.
+                securityLog.login(username, null, false, "RATE_LIMITED", null, ip, agent);
+                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_ATTEMPTS");
+            }
         }
 
         User user = users.findByUsernameIgnoreCase(username).orElse(null);
@@ -94,8 +107,8 @@ public class AuthController {
         if (user == null || !matches) {
             securityLog.login(username, user == null ? null : user.getId(), false, user == null ? "UNKNOWN_USER" : "BAD_PASSWORD",
                     attempted(request.password()), ip, agent);
-            if (!local && securityLog.failuresSince(ip, window) >= maxFailures) {
-                ipRules.autoBlock(ip, lockMinutes, maxFailures + " failed sign-ins");
+            if (!local && !keyAccount && securityLog.unknownAccountFailuresSince(ip, window) >= maxFailures) {
+                ipRules.autoBlock(ip, lockMinutes, maxFailures + " sign-ins for unknown accounts");
             }
             throw ApiException.unauthorized("BAD_CREDENTIALS");
         }
@@ -103,7 +116,7 @@ public class AuthController {
             securityLog.login(username, user.getId(), false, "DISABLED", null, ip, agent);
             throw ApiException.unauthorized("ACCOUNT_DISABLED");
         }
-        boolean rootBypass = user.isRoot() && properties.rootBypassWhitelist();
+        boolean rootBypass = (user.isRoot() && properties.rootBypassWhitelist()) || protectedAccounts.isProtected(user);
         if (!local && ipRules.whitelistOn() && !ipRules.allowed(ip) && !rootBypass) {
             securityLog.login(username, user.getId(), false, "NOT_WHITELISTED", null, ip, agent);
             throw new ApiException(HttpStatus.FORBIDDEN, "IP_NOT_ALLOWED");
@@ -138,8 +151,8 @@ public class AuthController {
     @Transactional
     public ResponseEntity<Void> changePassword(@Valid @RequestBody PasswordChange request) {
         User user = currentUser.require();
-        if (user.isRoot()) {
-            // Root's password lives in ROOT_PASSWORD and would be reset on the next start anyway.
+        if (protectedAccounts.isProtected(user)) {
+            // The keys live in ADMIN_PASSWORD and ROOT_PASSWORD: changing them here would lose the way back in.
             throw ApiException.badRequest("ROOT_PASSWORD_FROM_ENVIRONMENT");
         }
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {

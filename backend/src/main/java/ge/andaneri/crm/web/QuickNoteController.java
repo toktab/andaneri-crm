@@ -53,10 +53,19 @@ public class QuickNoteController {
         this.currentUser = currentUser;
     }
 
+    /**
+     * My own notes - or, for a supervisor looking in on someone, that person's. Reading only: a note is
+     * still written, ticked off and deleted by the person it belongs to.
+     */
     @GetMapping
     @Transactional(readOnly = true)
-    public List<NoteDto> mine() {
-        return notes.findForUser(currentUser.require().getId()).stream().map(NoteDto::of).toList();
+    public List<NoteDto> mine(@org.springframework.web.bind.annotation.RequestParam(required = false) Long userId) {
+        User me = currentUser.require();
+        if (userId == null || userId.equals(me.getId())) {
+            return notes.findForUser(me.getId()).stream().map(NoteDto::of).toList();
+        }
+        currentUser.requireSupervisor();
+        return notes.findForUser(userId).stream().map(NoteDto::of).toList();
     }
 
     @PostMapping

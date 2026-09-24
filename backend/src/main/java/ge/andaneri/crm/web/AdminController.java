@@ -20,6 +20,8 @@ import java.util.Map;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,13 +38,19 @@ public class AdminController {
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final ge.andaneri.crm.auth.ProtectedAccounts protectedAccounts;
     private final CurrentUser currentUser;
     private final SettingsService settings;
     private final AuditEntryRepository auditEntries;
     private final AuditService audit;
+    private final ge.andaneri.crm.domain.IpRuleRepository ipRules;
+    private final ge.andaneri.crm.security.IpRules ipRuleCache;
 
     public AdminController(UserRepository users, PasswordEncoder passwordEncoder, CurrentUser currentUser,
-            SettingsService settings, AuditEntryRepository auditEntries, AuditService audit) {
+            SettingsService settings, AuditEntryRepository auditEntries, AuditService audit, ge.andaneri.crm.auth.ProtectedAccounts protectedAccounts, ge.andaneri.crm.domain.IpRuleRepository ipRules, ge.andaneri.crm.security.IpRules ipRuleCache) {
+        this.ipRules = ipRules;
+        this.ipRuleCache = ipRuleCache;
+        this.protectedAccounts = protectedAccounts;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.currentUser = currentUser;
@@ -98,10 +106,16 @@ public class AdminController {
         User admin = currentUser.requireAdmin();
         User user = users.findById(id).orElseThrow(ApiException::notFound);
         boolean active = request.active() == null ? user.isActive() : request.active();
-        // Root is managed through the environment: nobody changes its role, switches it off or sets its password here.
+        // The key accounts are managed through the environment: nobody changes their role, switches them
+        // off or sets their password here - that is what keeps a way back in after any lockout.
         if (user.isRoot()) {
             if (!admin.isRoot() || !active || request.role() != Role.ROOT || (request.password() != null && !request.password().isBlank())) {
                 throw ApiException.forbidden();
+            }
+        } else if (protectedAccounts.isProtected(user)) {
+            // The first admin: its password comes from ADMIN_PASSWORD, and it cannot be switched off here.
+            if (!active || request.role() != user.getRole() || (request.password() != null && !request.password().isBlank())) {
+                throw ApiException.badRequest("PROTECTED_ACCOUNT");
             }
         } else if (request.role() == Role.ROOT) {
             throw ApiException.forbidden();
@@ -124,6 +138,37 @@ public class AdminController {
         audit.record(null, "User", id, "UPDATED",
                 user.getUsername() + ": " + before + " -> " + user.getRole() + (user.isActive() ? "" : " inactive"), admin);
         return UserDto.of(user);
+    }
+
+    /** Addresses the server is turning away right now, so an admin can lift one without hunting for root. */
+    @GetMapping("/ip-blocks")
+    public List<BlockDto> blocks(jakarta.servlet.http.HttpServletRequest http) {
+        currentUser.requireAdmin();
+        Instant now = Instant.now();
+        return ipRules.findAll().stream()
+                .filter(rule -> rule.getKind() == ge.andaneri.crm.domain.IpRule.Kind.BLOCK && rule.isLive(now))
+                .map(rule -> new BlockDto(rule.getId(), rule.getPattern(), rule.getNote(), rule.isAutomatic(),
+                        rule.getCreatedAt(), rule.getExpiresAt(),
+                        ge.andaneri.crm.security.IpRules.covers(rule.getPattern(), ge.andaneri.crm.security.ClientIp.of(http))))
+                .toList();
+    }
+
+    /** Lifts one block. The sign-in log keeps why it was there. */
+    @DeleteMapping("/ip-blocks/{id}")
+    public ResponseEntity<Void> unblock(@PathVariable Long id) {
+        User admin = currentUser.requireAdmin();
+        ge.andaneri.crm.domain.IpRule rule = ipRules.findById(id).orElseThrow(ApiException::notFound);
+        if (rule.getKind() != ge.andaneri.crm.domain.IpRule.Kind.BLOCK) {
+            throw ApiException.forbidden();
+        }
+        ipRules.delete(rule);
+        ipRuleCache.reload();
+        audit.record(null, "IpRule", id, "DELETED", "unblocked " + rule.getPattern(), admin);
+        return ResponseEntity.noContent().build();
+    }
+
+    public record BlockDto(Long id, String pattern, String note, boolean automatic, Instant createdAt, Instant expiresAt,
+            boolean coversYou) {
     }
 
     @PutMapping("/settings")

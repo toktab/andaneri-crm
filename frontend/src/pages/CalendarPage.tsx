@@ -27,7 +27,7 @@ export function CalendarPage() {
   const { t, lang } = useI18n()
   const locale = lang === 'ka' ? kaLocale : enUS
   const { user } = useAuth()
-  const { canEdit } = useMode()
+  const { canEdit, asUserId } = useMode()
   const lookups = useLookups()
   const toast = useToast()
   const refresh = useRefreshWork()
@@ -46,7 +46,7 @@ export function CalendarPage() {
   })
   const [creating, setCreating] = useState<string | null>(null)
   const editable = canEdit()
-  const userId = who === 'me' ? user?.id ?? null : who === 'all' ? null : Number(who)
+  const userId = asUserId ?? (who === 'me' ? user?.id ?? null : who === 'all' ? null : Number(who))
 
   const range = useMemo(() => {
     if (view === 'month') return { from: startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 }), to: addDays(endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 }), 1) }

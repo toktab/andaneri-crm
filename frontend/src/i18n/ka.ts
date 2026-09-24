@@ -6,7 +6,7 @@ export const ka = {
   nav: {
     today: 'დღეს', calls: 'ზარები', businesses: 'ბიზნესები', pipeline: 'ფაიპლაინი', calendar: 'კალენდარი',
     tasks: 'ამოცანები', notes: 'ჩანაწერები', products: 'პროდუქცია', reports: 'რეპორტი', import: 'იმპორტი / ექსპორტი',
-    admin: 'ადმინისტრირება', more: 'სხვა', start: 'დაწყება', flavors: 'გემოები', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
+    admin: 'ადმინისტრირება', more: 'სხვა', start: 'დაწყება', flavors: 'გემოები', team: 'გუნდი', search: 'ძებნა (Ctrl + K)', main: 'მთავარი', security: 'უსაფრთხოება', history: 'ჩემი ისტორია',
   },
   install: { title: 'დაამატეთ CRM მთავარ ეკრანზე', hint: 'გაიხსნება აპივით, სრულ ეკრანზე, და შეხსენებებიც მოვა.', button: 'დამატება' },
   notify: {
@@ -279,9 +279,18 @@ export const ka = {
     pick: 'ბიზნესი', pickHint: 'აირჩიეთ ბიზნესი და ნახავთ ყველაფერს გემოებზე',
     boughtSyrups: 'სიროფები (ნაყიდი)', otherBought: 'სხვა ნაყიდი (პიურე, სოუსი...)',
     noneFresh: 'ფრეშს არ იყენებენ (ან ჯერ არ ვიცით)', noneHouse: 'თვითონ არაფერს ამზადებენ (ან ჯერ არ ვიცით)',
+    haveNow: '1. რა აქვთ / რას იყენებენ ახლა', interestedIn: '2. რა აინტერესებთ', bringing: '3. რას მივიტანთ',
+    bringingHint: 'რასაც იყენებენ + რაც აინტერესებთ, და დაამატე სხვაც რომ უფრო საინტერესო იყოს',
     alreadyLeft: 'უკვე დავუტოვეთ', testers: 'საცდელი ბოთლები (100 მლ)',
     testersHint: 'მონიშნეთ, რა ჩავალაგოთ', inBag: 'ჩანთაში: {n}', copyList: 'სიის კოპირება',
     planDelivery: 'მიტანის დაგეგმვა', planned: 'მიტანა დაიგეგმა',
+  },
+  team: {
+    title: 'გუნდის რეჟიმი', subtitle: 'ვინ რა გააკეთა, ვინ სად არის ახლა და ვისი თვალითაც გინდა, იმის ეკრანები',
+    rightNow: 'ახლა მუშაობენ', nobodyNow: 'ახლა არავინ არის ჩართული', isOn: 'ახლა აქ არის:', isInApp: 'CRM-ში',
+    since: 'დან: {at}', lastSeen: 'ბოლო აქტივობა', lastLogin: 'ბოლო შესვლა',
+    viewAs: 'მისი თვალით', viewingAs: 'ხედავთ როგორც: {name} — მხოლოდ ნახვა', stopViewing: 'დასრულება',
+    whatTheyDid: 'რა გააკეთა', theirPlan: 'მისი დაგეგმილი', addedBy: 'დაამატა', callingNow: '{name} ახლა ამ ბიზნესშია',
   },
   calendar: { title: 'კალენდარი', month: 'თვე', week: 'კვირა', day: 'დღე', agenda: 'სია', newEvent: 'ახალი', today: 'დღეს', mine: 'ჩემი', everyone: 'ყველას' },
   tasks: {
@@ -307,6 +316,7 @@ export const ka = {
     ownBrand: 'ჩვენი ბრენდი', addBrand: 'ბრენდის დამატება', addFlavor: 'გემოს დამატება', packSize: 'მოცულობა',
     filter: 'ფილტრი...', priceList: 'ფასების სია', usedBy: '{n} ბიზნესი იყენებს',
   },
+  market: { brands: 'რომელ ბრენდებს იყენებენ', flavorsOf: '{category}: რომელ გემოებს იყენებენ', ownToo: 'ჩვენიც ჩაითვალოს' },
   reports: {
     title: 'რეპორტი', period: 'პერიოდი', thisWeek: 'ეს კვირა', thisMonth: 'ეს თვე', lastMonth: 'გასული თვე', last30: 'ბოლო 30 დღე',
     last90: 'ბოლო 90 დღე', thisYear: 'ეს წელი', person: 'თანამშრომელი', sections: 'რა ჩანდეს', exportXlsx: 'Excel', exportJson: 'JSON',
@@ -387,6 +397,12 @@ export const ka = {
       backup_reminder: 'ბექაპის შეხსენება ადმინებს',
     },
     auditEntity: 'ობიექტი', auditAction: 'ქმედება',
+    blockedIps: 'დაბლოკილი მისამართები',
+    blockedIpsHint: 'ზედიზედ არასწორი პაროლის შემდეგ მისამართი ავტომატურად იბლოკება. თუ ეს თქვენი ოფისია, აქედან მოხსენით.',
+    blockCoversYou: 'ეს თქვენი მისამართია',
+    blockAutomatic: 'ავტომატური',
+    liftBlock: 'მოხსნა',
+    blockLifted: 'ბლოკი მოხსნილია',
     customFields: 'დამატებითი ველები', addField: 'ველის დამატება', fieldName: 'ახალი ველის დასახელება',
     noCustomFields: 'დამატებითი ველები ჯერ არ არის. ისინი ემატება Excel იმპორტის დროს ან აქ.',
     rootLocked: 'Root ანგარიში იმართება environment variable-ებიდან (ROOT_USERNAME, ROOT_PASSWORD).',

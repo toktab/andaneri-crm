@@ -102,9 +102,22 @@ public class SecurityLog {
 
     // ------------------------------------------------------------------ brute-force check
 
-    public int failuresSince(String ip, Instant since) {
+    /** Wrong passwords for one account from one address: that account is slowed down, nobody else. */
+    public int failuresSince(String ip, Instant since, String username) {
         Integer count = jdbc.queryForObject(
-                "select count(*) from login_events where ip = ? and success = false and reason in ('BAD_PASSWORD', 'UNKNOWN_USER') and created_at >= ?",
+                "select count(*) from login_events where ip = ? and lower(username) = lower(?) and success = false"
+                        + " and reason = 'BAD_PASSWORD' and created_at >= ?",
+                Integer.class, ip, username, utc(since));
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * Tries at names that do not exist, from one address. That is someone guessing their way in rather
+     * than a colleague mistyping, and it is the only thing that blocks an address.
+     */
+    public int unknownAccountFailuresSince(String ip, Instant since) {
+        Integer count = jdbc.queryForObject(
+                "select count(*) from login_events where ip = ? and success = false and reason = 'UNKNOWN_USER' and created_at >= ?",
                 Integer.class, ip, utc(since));
         return count == null ? 0 : count;
     }

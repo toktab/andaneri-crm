@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, CalendarDays, Clock, Copy, Eraser, ExternalLink, MapPin, MessageSquare, Phone, PhoneOff, ShoppingCart, Sparkles, Star, ThumbsDown, ThumbsUp,
@@ -129,6 +129,27 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
   const lookups = useLookups()
   const business = useBusiness(businessId)
   const canCall = useCanCall()
+  const [alsoHere, setAlsoHere] = useState<string[]>([])
+
+  // "I am on this one", every half minute while the screen is open, and a goodbye when it closes.
+  useEffect(() => {
+    let alive = true
+    const beat = async () => {
+      try {
+        const here = await api.post<{ others: { userName: string }[] }>('/presence', { businessId })
+        if (alive) setAlsoHere(here.others.map((o) => o.userName))
+      } catch {
+        /* offline for a moment */
+      }
+    }
+    void beat()
+    const timer = setInterval(() => void beat(), 30_000)
+    return () => {
+      alive = false
+      clearInterval(timer)
+      void api.post('/presence/leave', {}).catch(() => undefined)
+    }
+  }, [businessId])
   const [note, setNote] = useState('')
   const [logResult, setLogResult] = useState<ActivityResult | null>(null)
   const [logOpen, setLogOpen] = useState(false)
@@ -241,6 +262,13 @@ function CallCard({ businessId, task, position, onPrev, onNext }: {
             <Link to={`/businesses/${b.id}`} className="btn-secondary flex-1 sm:flex-none"><ExternalLink className="size-4" /> {t('callMode.open')}</Link>
           </div>
         </div>
+
+        {alsoHere.length > 0 && (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-1.5 text-sm text-amber-900">
+            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+            {t('team.callingNow', { name: alsoHere.join(', ') })}
+          </p>
+        )}
 
         {/* Big numbers */}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
