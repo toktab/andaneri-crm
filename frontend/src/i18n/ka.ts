@@ -246,6 +246,8 @@ export const ka = {
   },
   activity: {
     title: 'ჩანაწერი: {name}', type: 'რა მოხდა', result: 'შედეგი', contact: 'ვისთან', when: 'როდის', notes: 'რა თქვეს',
+    spokeWith: 'ვისაუბრეთ', noContact: 'ვისთან ვისაუბრეთ - არ წერია', loggedBy: 'ჩაწერა',
+    newContactPlaceholder: 'ან ჩაწერეთ სახელი - დაემატება კონტაქტებში',
     notesPlaceholder: 'მაგ.: მონინს ხმარობენ, მანგო აინტერესებთ, ფასი ძვირია...', newStatus: 'სტატუსი',
     keepStatus: 'არ შეცვალო', learned: 'რა გავიგეთ', uses: 'იყენებენ', wants: 'უნდათ / აინტერესებთ', wantStatus: 'რამდენად',
     nextStep: 'შემდეგი ნაბიჯი', noNextStep: 'არ გინდა', nextType: 'ტიპი', customTime: 'სხვა დრო', nextTitle: 'რა უნდა გავაკეთო',
@@ -293,7 +295,8 @@ export const ka = {
     whatTheyDid: 'რა გააკეთა', theirPlan: 'მისი დაგეგმილი', addedBy: 'დაამატა',
     theirHistory: '{name}: ისტორია', theirNotes: '{name}: ჩანაწერები', callingNow: '{name} ახლა ამ ბიზნესშია',
   },
-  calendar: { title: 'კალენდარი', month: 'თვე', week: 'კვირა', day: 'დღე', agenda: 'სია', newEvent: 'ახალი', today: 'დღეს', mine: 'ჩემი', everyone: 'ყველას' },
+  calendar: { title: 'კალენდარი', month: 'თვე', week: 'კვირა', day: 'დღე', agenda: 'სია', newEvent: 'ახალი', today: 'დღეს', mine: 'ჩემი', everyone: 'ყველას',
+    openBusiness: 'ბიზნესის გვერდი' },
   tasks: {
     title: 'ამოცანები', overdue: 'ვადაგადაცილებული', today: 'დღეს', upcoming: 'მომავალი', done: 'შესრულებული', newTask: 'ახალი ამოცანა',
     editTask: 'ამოცანის რედაქტირება', dueAt: 'თარიღი და დრო', endAt: 'დასრულება', allDay: 'მთელი დღე', location: 'ადგილი',

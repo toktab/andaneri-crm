@@ -245,6 +245,8 @@ export const en: Dict = {
   },
   activity: {
     title: 'Log: {name}', type: 'What happened', result: 'Result', contact: 'With whom', when: 'When', notes: 'What they said',
+    spokeWith: 'Spoke with', noContact: 'Who was spoken to - not written down', loggedBy: 'Logged by',
+    newContactPlaceholder: 'or type a name - it is added to the contacts',
     notesPlaceholder: 'e.g. use Monin, interested in mango, find it expensive...', newStatus: 'Status',
     keepStatus: 'Keep as is', learned: 'What we learned', uses: 'They use', wants: 'They want', wantStatus: 'How much',
     nextStep: 'Next step', noNextStep: 'None', nextType: 'Type', customTime: 'Other time', nextTitle: 'What to do',
@@ -292,7 +294,8 @@ export const en: Dict = {
     whatTheyDid: 'What they did', theirPlan: 'Their plan', addedBy: 'Added by',
     theirHistory: '{name}: history', theirNotes: '{name}: notes', callingNow: '{name} is on this business right now',
   },
-  calendar: { title: 'Calendar', month: 'Month', week: 'Week', day: 'Day', agenda: 'List', newEvent: 'New', today: 'Today', mine: 'Mine', everyone: 'Everyone' },
+  calendar: { title: 'Calendar', month: 'Month', week: 'Week', day: 'Day', agenda: 'List', newEvent: 'New', today: 'Today', mine: 'Mine', everyone: 'Everyone',
+    openBusiness: 'Business page' },
   tasks: {
     title: 'Tasks', overdue: 'Overdue', today: 'Today', upcoming: 'Upcoming', done: 'Done', newTask: 'New task',
     editTask: 'Edit task', dueAt: 'Date and time', endAt: 'Ends', allDay: 'All day', location: 'Location',

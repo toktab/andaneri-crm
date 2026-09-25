@@ -225,13 +225,19 @@ export function Profile({ b, backLabel, embedded }: { b: BusinessDetail; backLab
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <b>{t(`activityType.${b.lastActivity.type}`)}</b>
                       <ResultBadge result={b.lastActivity.result} />
-                      <span className="text-xs text-muted">{fmtDateTime(b.lastActivity.occurredAt, lang)} · {b.lastActivity.user.fullName}</span>
+                      <span className="text-xs text-muted">{fmtDateTime(b.lastActivity.occurredAt, lang)} · {t('activity.loggedBy')}: {b.lastActivity.user.fullName}</span>
                       {editable && (
                         <button type="button" className="btn-ghost ml-auto p-1.5" title={t('activity.edit')} onClick={() => void openActivity(b.lastActivity!.id)}>
                           <Pencil className="size-3.5" />
                         </button>
                       )}
                     </div>
+                    {/* The name that matters here is the one on the other end of the line. */}
+                    {b.lastActivity.contact
+                      ? <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                          <User className="size-4 shrink-0 text-brand-600" /> {t('activity.spokeWith')}: {b.lastActivity.contact.name}
+                        </p>
+                      : <p className="mt-1 text-xs italic text-muted">{t('activity.noContact')}</p>}
                     {b.lastActivity.notes && <p className="mt-2 whitespace-pre-line text-sm">{b.lastActivity.notes}</p>}
                   </div>
                 ) : <p className="px-1 text-sm text-muted">{t('callMode.neverContacted')}</p>}
@@ -543,8 +549,18 @@ function Timeline({ items, businessId, onEdit }: { items: TimelineItem[]; busine
             </div>
           )}
           {item.resultNote && <p className="mt-1 text-sm italic">{item.resultNote}</p>}
+          {/* Who was on the other end reads as its own line: it used to sit grey next to whoever
+              wrote the entry down, and the two were impossible to tell apart. */}
+          {item.kind === 'ACTIVITY' && (
+            item.contact
+              ? <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                  <User className="size-4 shrink-0 text-brand-600" />
+                  {t('activity.spokeWith')}: {item.contact.name}
+                </p>
+              : <p className="mt-1 text-xs italic text-muted">{t('activity.noContact')}</p>
+          )}
           <div className="text-xs text-muted">
-            {fmtDateTime(item.at, lang)}{item.user && ` · ${item.user.fullName}`}{item.contact && ` · ${item.contact.name}`}
+            {fmtDateTime(item.at, lang)}{item.user && ` · ${t('activity.loggedBy')}: ${item.user.fullName}`}
           </div>
           {item.title && item.kind !== 'ACTIVITY' && <p className="mt-1 text-sm">{item.title}</p>}
           {item.notes && <p className="mt-1 whitespace-pre-line text-sm">{item.notes}</p>}

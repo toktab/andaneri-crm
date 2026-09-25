@@ -74,8 +74,13 @@ export function CalendarPage() {
     }
   }
 
-  /** In route mode a stop opens as a briefing; otherwise it opens for editing. */
-  const openTask = (task: TaskDto) => (route ? setBriefing(task) : setOpen(task))
+  /**
+   * Anything on the calendar opens as the card you actually want to read: who was last spoken to and
+   * what they said, what they pour, what they asked about, the phone and the map. Editing the event,
+   * and the whole business page, are one button away from there - having to go and search for the
+   * place again just to remember any of it was the whole complaint.
+   */
+  const openTask = (task: TaskDto) => setBriefing(task)
 
   const stops = (tasks.data ?? [])
     .filter((task) => task.status === 'OPEN' && isSameDay(new Date(task.dueAt), new Date()))
@@ -301,7 +306,7 @@ export function CalendarPage() {
         )
       )}
 
-      <RouteBriefing task={briefing} onClose={() => setBriefing(null)} />
+      <RouteBriefing task={briefing} onClose={() => setBriefing(null)} onEdit={editable ? (task) => { setBriefing(null); setOpen(task) } : undefined} />
       <TaskDialog open={Boolean(open)} task={open} onClose={() => setOpen(null)} />
       <TaskDialog open={Boolean(creating)} defaultDueAt={creating} defaultType="MEETING" onClose={() => setCreating(null)} />
     </div>

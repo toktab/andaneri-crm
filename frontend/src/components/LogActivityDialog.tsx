@@ -129,6 +129,9 @@ export function LogActivityDialog({
   const [resultNote, setResultNote] = useState('')
   const result = results[0] ?? null
   const [contactId, setContactId] = useState<string>('')
+  // Somebody answered the phone who is not in the contacts yet. Typing the name here beats leaving
+  // "who did you talk to" empty and losing it: the person is created with the entry.
+  const [newContact, setNewContact] = useState('')
   const [when, setWhen] = useState(toLocalInput(new Date()))
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<BusinessStatus | ''>('')
@@ -158,7 +161,10 @@ export function LogActivityDialog({
     setResultNote(activity?.resultNote ?? '')
     setContactId(activity?.contact ? String(activity.contact.id)
       : completeTask?.contact ? String(completeTask.contact.id)
-        : business.contacts.find((c) => c.decisionMaker) ? String(business.contacts.find((c) => c.decisionMaker)!.id) : '')
+        : business.contacts.find((c) => c.decisionMaker) ? String(business.contacts.find((c) => c.decisionMaker)!.id)
+          // One name in the book means there is nothing to choose: it was them.
+          : business.contacts.length === 1 ? String(business.contacts[0].id) : '')
+    setNewContact('')
     setWhen(toLocalInput(activity ? activity.occurredAt : new Date()))
     setNotes(activity?.notes ?? initialNotes)
     setStatus('')
@@ -220,6 +226,14 @@ export function LogActivityDialog({
     if (!result) return
     setSaving(true)
     try {
+      let personId = contactId ? Number(contactId) : null
+      if (!personId && newContact.trim()) {
+        const created = await api.post<{ id: number }>(`/businesses/${business.id}/contacts`, {
+          name: newContact.trim(), roleTitle: null, phone: null, email: null,
+          preferredChannel: 'ANY', decisionMaker: false, notes: null,
+        })
+        personId = created.id
+      }
       const usages = syrupCategory && (brandIds.length || flavorIds.length)
         ? brandIds.length > 1
           ? [...brandIds.map((brandId) => ({ categoryId: syrupCategory.id, brandId, flavorIds: [] })), { categoryId: syrupCategory.id, brandId: null, flavorIds }]
@@ -231,7 +245,7 @@ export function LogActivityDialog({
         result,
         results,
         resultNote: resultNote || null,
-        contactId: contactId ? Number(contactId) : null,
+        contactId: personId,
         occurredAt: fromLocalInput(when),
         notes,
         newStatus: status || null,
@@ -244,7 +258,7 @@ export function LogActivityDialog({
               dueAt,
               endAt: nextType === 'MEETING' ? new Date(new Date(dueAt).getTime() + 3_600_000).toISOString() : null,
               title: nextTitle || null,
-              contactId: contactId ? Number(contactId) : null,
+              contactId: personId,
               flavorIds: nextFlavors,
             }
           : null,
@@ -305,12 +319,23 @@ export function LogActivityDialog({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t('activity.contact')}>
-            <select className="input" value={contactId} onChange={(e) => setContactId(e.target.value)}>
-              <option value="">-</option>
-              {business.contacts.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}{c.roleTitle ? ` (${c.roleTitle})` : ''}</option>
-              ))}
-            </select>
+            {business.contacts.length > 0 && (
+              <select className="input" value={contactId} onChange={(e) => { setContactId(e.target.value); if (e.target.value) setNewContact('') }}>
+                <option value="">-</option>
+                {business.contacts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.roleTitle ? ` (${c.roleTitle})` : ''}</option>
+                ))}
+              </select>
+            )}
+            {!contactId && (
+              <input
+                className={`input ${business.contacts.length > 0 ? 'mt-1.5' : ''}`}
+                placeholder={t('activity.newContactPlaceholder')}
+                maxLength={120}
+                value={newContact}
+                onChange={(e) => setNewContact(e.target.value)}
+              />
+            )}
           </Field>
           <Field label={t('activity.when')}>
             <input type="datetime-local" className="input" value={when} onChange={(e) => setWhen(e.target.value)} />

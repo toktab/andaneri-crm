@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleCheck, Clock, ExternalLink, FlaskConical, MapPin, Star } from 'lucide-react'
+import { CircleCheck, Clock, ExternalLink, FlaskConical, MapPin, Pencil, Star, User } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBusiness, useLookups, useRefreshWork, useTimeline } from '../lib/queries'
 import { fmtDateTime, fmtShortDate, fmtTime, mapsHref, money } from '../lib/format'
@@ -16,9 +16,13 @@ import { useToast } from './Toast'
 /**
  * Standing outside the door with a phone in one hand: everything needed to walk in and nothing else.
  * Where it is, who to ask for and on which number, what they pour now, what they asked about, what was
- * said last time, and what to hand over. Opened from the calendar while route mode is on.
+ * said last time and to whom, and what to hand over.
+ *
+ * <p>Everything on the calendar opens this, not the edit form: what a stop is worth knowing is all
+ * here, and the full business page is one button below instead of a search away.
  */
-export function RouteBriefing({ task, onClose }: { task: TaskDto | null; onClose: () => void }) {
+export function RouteBriefing({ task, onClose, onEdit }:
+  { task: TaskDto | null; onClose: () => void; onEdit?: (task: TaskDto) => void }) {
   const { t, lang, name } = useI18n()
   const toast = useToast()
   const refresh = useRefreshWork()
@@ -61,9 +65,14 @@ export function RouteBriefing({ task, onClose }: { task: TaskDto | null; onClose
               <FlaskConical className="size-4" /> {t('flavors.title')}
             </Link>
           )}
-          {task.businessId && canEdit(b?.canEdit) && (
-            <Link to={`/businesses/${task.businessId}?task=${task.id}`} className="btn-secondary" onClick={onClose}>
-              <ExternalLink className="size-4" /> {t('business.logActivity')}
+          {onEdit && (
+            <button type="button" className="btn-secondary" onClick={() => onEdit(task)}>
+              <Pencil className="size-4" /> {t('common.edit')}
+            </button>
+          )}
+          {task.businessId && (
+            <Link to={`/businesses/${task.businessId}`} className="btn-secondary" onClick={onClose}>
+              <ExternalLink className="size-4" /> {t('calendar.openBusiness')}
             </Link>
           )}
           {task.status === 'OPEN' && canEdit(b?.canEdit) && (
@@ -165,6 +174,11 @@ export function RouteBriefing({ task, onClose }: { task: TaskDto | null; onClose
                         {item.results.map((r) => <span key={r}>{t(`activityResult.${r}`)}</span>)}
                         <span>{fmtDateTime(item.at, lang)}</span>
                       </div>
+                      {item.contact && (
+                        <p className="flex items-center gap-1 font-medium">
+                          <User className="size-3.5 shrink-0 text-brand-600" /> {t('activity.spokeWith')}: {item.contact.name}
+                        </p>
+                      )}
                       {item.resultNote && <p className="italic">{item.resultNote}</p>}
                       {item.notes && <p className="whitespace-pre-line">{item.notes}</p>}
                     </div>
