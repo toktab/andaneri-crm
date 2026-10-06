@@ -24,8 +24,13 @@ public class Brand {
 
     private boolean active = true;
 
+    /**
+     * Set here rather than only in the constructor below: a restore builds a brand with the no-arg
+     * constructor and setters, and a brand the install has never seen used to fail to save at all -
+     * which stopped a whole backup from going back in.
+     */
     @Column(nullable = false)
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
 
     public Brand() {
     }

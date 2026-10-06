@@ -208,6 +208,36 @@ class BackupRestoreRoundTripTest {
         assertThat(notes.findAll().get(0).getBody()).isEqualTo("პირადი შეხსენება");
     }
 
+    /**
+     * A backup from a company that pours a brand this install has never heard of. The round trip above
+     * never caught it, because everything in it was already in the catalog: a brand built fresh had no
+     * created_at, the insert was refused, and the whole restore died on the first one - which is how a
+     * real backup of 351 places failed to go back in.
+     */
+    @Test
+    void aBackupBringsBrandsThisInstallHasNeverSeen() throws Exception {
+        String admin = login("admin", "test-admin-password");
+        String backup = """
+                {"format":"andaneri-crm-backup","version":1,
+                 "catalog":{"brands":[{"name":"Fabbri 1905","own":false,"active":true},
+                                      {"name":"Giffard","own":false,"active":true}]},
+                 "crm":{"format":"andaneri-crm","version":1,
+                        "businesses":[{"name":"Brand New Bar","status":"NEW"}]}}""";
+
+        MvcResult restored = mvc.perform(multipart("/api/admin/backups/restore")
+                        .file(new MockMultipartFile("file", "backup.json", "application/json",
+                                backup.getBytes(StandardCharsets.UTF_8)))
+                        .header("Authorization", "Bearer " + admin))
+                .andReturn();
+        String body = restored.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(restored.getResponse().getStatus()).as(body).isEqualTo(200);
+
+        // Both are on the shelf now, and the place that came with them is here too.
+        List<String> names = JsonPath.read(call(admin, get("/api/lookups"), 200), "$.brands[*].name");
+        assertThat(names).contains("Fabbri 1905", "Giffard");
+        assertThat(businesses.findAll()).extracting(b -> b.getName()).contains("Brand New Bar");
+    }
+
     /** What a new server looks like: the tables empty, only the account doing the restore left. */
     private void wipe() {
         jdbc.update("delete from backup_events");
